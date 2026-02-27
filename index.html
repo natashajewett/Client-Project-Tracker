@@ -2708,6 +2708,32 @@ body.viewer-mode .task-cell-select { pointer-events: none !important; opacity: 0
 
 /* Viewer mode: keep notes + files add forms visible (already visible by default, nothing to un-hide) */
 
+/* ── Multi-select client filter ── */
+.multi-select-wrap { position: relative; }
+.multi-select-btn { cursor: pointer; text-align: left; white-space: nowrap; position: relative; padding-right: 22px; }
+.multi-select-btn::after { content: '▾'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--text-muted); pointer-events: none; }
+.multi-select-btn.open::after { content: '▴'; }
+.multi-select-dropdown {
+ display: none;
+ position: absolute;
+ top: calc(100% + 4px);
+ left: 0;
+ min-width: 200px;
+ background: var(--bg-elevated);
+ border: 1px solid var(--border-default);
+ border-radius: var(--radius-md);
+ box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+ z-index: 200;
+ padding: 4px 0;
+ max-height: 280px;
+ overflow-y: auto;
+}
+.multi-select-dropdown.open { display: block; }
+.multi-select-option { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; transition: background var(--transition-fast); }
+.multi-select-option:hover { background: var(--bg-card-hover); }
+.multi-select-option input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--color-accent); cursor: pointer; flex-shrink: 0; }
+.multi-select-option label { font-size: var(--font-sm); color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -3117,7 +3143,7 @@ document.getElementById('form-modal-cancel').addEventListener('click', () => clo
 const AppState = {
  currentView: 'dashboard', // 'dashboard' | 'detail'
  currentProjectId: null,
- filterClient: '',
+ filterClients: [], // array of clientId strings
  filterStatus: '',
  filterDeadlineFrom: '',
  filterDeadlineTo: '',
@@ -3173,7 +3199,7 @@ function renderStatsBar(projects) {
  <div class="stat-card-inner">
  <div class="stat-label">Total Projects</div>
  <div class="stat-value">${total}</div>
- <div class="stat-sub">${active} actively running</div>
+ <div class="stat-sub">${active} actively running${filtersActive() ? ' (filtered)' : ''}</div>
  </div>
  </div>
 
@@ -3183,7 +3209,7 @@ function renderStatsBar(projects) {
  <div class="stat-card-inner">
  <div class="stat-label">Pipeline Value</div>
  <div class="stat-value">${formatCurrency(pipeline)}</div>
- <div class="stat-sub">across all projects</div>
+ <div class="stat-sub">${filtersActive() ? 'filtered view' : 'across all projects'}</div>
  </div>
  </div>
 
@@ -3209,22 +3235,25 @@ function renderStatsBar(projects) {
  Returns soonest upcoming task due date or project target date
 ───────────────────────────────────────────────── */
 function getNextDeadline(project) {
+ // Completed or Live projects never show a deadline or overdue warning
+ if (project.status === 'Completed' || project.status === 'Live') return null;
+
  const candidates = [];
 
- // Project target launch date
- if (project.targetLaunchDate) candidates.push(project.targetLaunchDate);
-
- // Tasks with due dates that aren't done
+ // Only incomplete tasks drive the deadline — done tasks are ignored
  (project.tasks || []).forEach(t => {
  if (t.dueDate && t.status !== 'Done') candidates.push(t.dueDate);
  });
 
- // Upcoming milestones
+ // Only incomplete milestones
  (project.milestones || []).forEach(m => {
  if (m.date && !m.completed) candidates.push(m.date);
  });
 
- if (!candidates.length) return null;
+ // If all tasks and milestones are done, fall back to project target date (no overdue shown)
+ if (!candidates.length) {
+ return project.targetLaunchDate || null;
+ }
 
  // Return the soonest date
  return candidates.sort()[0];
@@ -3250,9 +3279,9 @@ function getFilteredProjects() {
  );
  }
 
- // Filter by client
- if (AppState.filterClient) {
- projects = projects.filter(p => p.clientId === AppState.filterClient);
+ // Filter by client(s)
+ if (AppState.filterClients.length > 0) {
+  projects = projects.filter(p => AppState.filterClients.includes(p.clientId));
  }
 
  // Filter by status
@@ -3338,22 +3367,28 @@ function projectCardHtml(project) {
 
  const nextDeadline = getNextDeadline(project);
  const deadlineDays = nextDeadline ? daysUntil(nextDeadline) : null;
+
+ // Only mark overdue if there are actual incomplete tasks/milestones driving the date
+ // (not just the fallback target date when everything is done)
+ const hasIncompleteTasks = (project.tasks || []).some(t => t.dueDate && t.status !== 'Done') ||
+   (project.milestones || []).some(m => m.date && !m.completed);
+
  let deadlineClass = '';
- if (deadlineDays !== null) {
+ if (deadlineDays !== null && hasIncompleteTasks) {
  if (deadlineDays < 0) deadlineClass = 'overdue';
  else if (deadlineDays <= 7) deadlineClass = 'soon';
  }
 
- // Deadline display
+ // Deadline display — only show overdue warning when incomplete tasks exist
  let deadlineDisplay = '—';
  if (nextDeadline) {
- if (deadlineDays !== null && deadlineDays < 0) {
+ if (deadlineDays !== null && deadlineDays < 0 && hasIncompleteTasks) {
  deadlineDisplay = `${formatDateShort(nextDeadline)} · ${Math.abs(deadlineDays)}d overdue`;
- } else if (deadlineDays === 0) {
+ } else if (deadlineDays === 0 && hasIncompleteTasks) {
  deadlineDisplay = 'Due today';
- } else if (deadlineDays === 1) {
+ } else if (deadlineDays === 1 && hasIncompleteTasks) {
  deadlineDisplay = 'Due tomorrow';
- } else if (deadlineDays !== null && deadlineDays <= 7) {
+ } else if (deadlineDays !== null && deadlineDays <= 7 && hasIncompleteTasks) {
  deadlineDisplay = `${formatDateShort(nextDeadline)} · ${deadlineDays}d`;
  } else {
  deadlineDisplay = formatDateShort(nextDeadline);
@@ -3408,7 +3443,7 @@ function renderProjectGrid() {
  const projects = getFilteredProjects();
 
  // Update stats bar with ALL projects (not filtered) for global counts
- renderStatsBar(DB.getProjects());
+ renderStatsBar(getFilteredProjects());
 
  if (!projects.length) {
  grid.innerHTML = `
@@ -5448,11 +5483,23 @@ function renderFilterBar() {
 
  <div class="filter-sep"></div>
 
- <!-- Client filter -->
- <select id="filter-client" class="filter-select${AppState.filterClient ? ' has-value' : ''}">
- <option value="">All Clients</option>
- ${clientOpts}
- </select>
+ <!-- Client filter: multi-select dropdown -->
+ <div class="multi-select-wrap" id="client-filter-wrap">
+  <button type="button" class="filter-select multi-select-btn${AppState.filterClients.length > 0 ? ' has-value' : ''}" id="client-filter-btn">
+   ${AppState.filterClients.length === 0 ? 'All Clients' : AppState.filterClients.length === 1 ? (DB.getClients().find(c=>c.id===AppState.filterClients[0])?.name || '1 client') : AppState.filterClients.length + ' clients'}
+  </button>
+  <div class="multi-select-dropdown" id="client-filter-dropdown">
+   <div class="multi-select-option" data-client-id="">
+    <input type="checkbox" id="cf-all" ${AppState.filterClients.length === 0 ? 'checked' : ''} />
+    <label for="cf-all">All Clients</label>
+   </div>
+   ${DB.getClients().map((c,i) => `
+   <div class="multi-select-option" data-client-id="${c.id}">
+    <input type="checkbox" id="cf-${i}" ${AppState.filterClients.includes(c.id) ? 'checked' : ''} data-client-id="${c.id}" />
+    <label for="cf-${i}">${escHtml(c.name)}</label>
+   </div>`).join('')}
+  </div>
+ </div>
 
  <!-- Status filter -->
  <select id="filter-status" class="filter-select${AppState.filterStatus ? ' has-value' : ''}">
@@ -5498,9 +5545,7 @@ function renderFilterBar() {
  <span id="result-count"></span>
  `;
 
- // Set client select value after render (can't do it purely via HTML attribute for optgroups)
- const cs = document.getElementById('filter-client');
- if (cs) cs.value = AppState.filterClient || '';
+ // Multi-select dropdown state is set inline in the HTML template above
 
  // ── Dashboard action buttons ──
  const hideDoneActive = AppState.hideDone ? ' active' : '';
@@ -5518,7 +5563,7 @@ function renderFilterBar() {
 
 function filtersActive() {
  return !!(AppState.searchQuery ||
- AppState.filterClient ||
+ AppState.filterClients.length > 0 ||
  AppState.filterStatus ||
  AppState.filterDeadlineFrom ||
  AppState.filterDeadlineTo);
@@ -5564,15 +5609,44 @@ function bindFilterBarEvents() {
  });
  }
 
- // Client filter
- const clientEl = document.getElementById('filter-client');
- if (clientEl) {
- clientEl.addEventListener('change', e => {
- AppState.filterClient = e.target.value;
- clientEl.classList.toggle('has-value', !!e.target.value);
- renderProjectGrid();
- updateResultCount();
- });
+ // Client multi-select filter
+ const clientBtn = document.getElementById('client-filter-btn');
+ const clientDropdown = document.getElementById('client-filter-dropdown');
+ const clientWrap = document.getElementById('client-filter-wrap');
+ if (clientBtn && clientDropdown) {
+  clientBtn.addEventListener('click', e => {
+   e.stopPropagation();
+   const isOpen = clientDropdown.classList.toggle('open');
+   clientBtn.classList.toggle('open', isOpen);
+  });
+  clientDropdown.addEventListener('change', e => {
+   const cb = e.target;
+   if (!cb.matches('input[type="checkbox"]')) return;
+   const cid = cb.dataset.clientId;
+   if (cid === '') {
+    AppState.filterClients = [];
+    clientDropdown.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = (c.dataset.clientId === ''); });
+   } else {
+    const allCb = clientDropdown.querySelector('input[data-client-id=""]');
+    if (cb.checked) { if (!AppState.filterClients.includes(cid)) AppState.filterClients.push(cid); }
+    else { AppState.filterClients = AppState.filterClients.filter(id => id !== cid); }
+    if (allCb) allCb.checked = AppState.filterClients.length === 0;
+   }
+   const clients = DB.getClients();
+   if (AppState.filterClients.length === 0) { clientBtn.textContent = 'All Clients'; }
+   else if (AppState.filterClients.length === 1) { clientBtn.textContent = clients.find(c => c.id === AppState.filterClients[0])?.name || '1 client'; }
+   else { clientBtn.textContent = AppState.filterClients.length + ' clients'; }
+   clientBtn.classList.toggle('has-value', AppState.filterClients.length > 0);
+   renderProjectGrid();
+   renderStatsBar(getFilteredProjects());
+   updateResultCount();
+  });
+  document.addEventListener('click', e => {
+   if (clientWrap && !clientWrap.contains(e.target)) {
+    clientDropdown.classList.remove('open');
+    clientBtn.classList.remove('open');
+   }
+  });
  }
 
  // Status filter
@@ -5632,7 +5706,7 @@ function bindFilterBarEvents() {
  if (clearBtn) {
  clearBtn.addEventListener('click', () => {
  AppState.searchQuery = '';
- AppState.filterClient = '';
+ AppState.filterClients = [];
  AppState.filterStatus = '';
  AppState.filterDeadlineFrom = '';
  AppState.filterDeadlineTo = '';
@@ -6010,7 +6084,7 @@ function initApp() {
 
  // Render filter bar, stats bar, and grid
  renderFilterBar();
- renderStatsBar(DB.getProjects());
+ renderStatsBar(getFilteredProjects());
  renderProjectGrid();
 
  console.log('CPT: App initialised. Projects loaded:', DB.getProjects().length);
