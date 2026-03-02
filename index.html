@@ -1717,6 +1717,60 @@
  .file-url-preview:hover { background: var(--bg-card); color:var(--text-secondary); }
  .file-del-btn { opacity:0; transition:opacity .15s; flex-shrink:0; margin-top:2px; }
  .file-row:hover .file-del-btn { opacity:1; }
+
+/* File type badge color variants */
+.file-type-badge.type-pdf { color:#ef4444; border-color:rgba(239,68,68,.3); background:rgba(239,68,68,.07); }
+.file-type-badge.type-image { color:#8b5cf6; border-color:rgba(139,92,246,.3); background:rgba(139,92,246,.07); }
+.file-type-badge.type-figma { color:#f24e1e; border-color:rgba(242,78,30,.3); background:rgba(242,78,30,.07); }
+.file-type-badge.type-doc { color:#2563eb; border-color:rgba(37,99,235,.3); background:rgba(37,99,235,.07); }
+.file-type-badge.type-sheet { color:#16a34a; border-color:rgba(22,163,74,.3); background:rgba(22,163,74,.07); }
+.file-type-badge.type-video { color:#dc2626; border-color:rgba(220,38,38,.3); background:rgba(220,38,38,.07); }
+.file-type-badge.type-link { color:#0ea5e9; border-color:rgba(14,165,233,.3); background:rgba(14,165,233,.07); }
+.file-type-badge.type-zip { color:#d97706; border-color:rgba(217,119,6,.3); background:rgba(217,119,6,.07); }
+.file-type-badge.type-slide { color:#f59e0b; border-color:rgba(245,158,11,.3); background:rgba(245,158,11,.07); }
+
+/* Uploaded file thumbnail */
+.file-thumb { width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid var(--border-default); flex-shrink:0; cursor:pointer; }
+.file-thumb:hover { opacity:.85; }
+.file-icon-upload { font-size:28px; flex-shrink:0; margin-top:2px; }
+
+/* File upload section */
+.file-upload-zone {
+ border: 2px dashed var(--border-default);
+ border-radius: var(--radius-md);
+ padding: var(--space-4);
+ text-align: center;
+ cursor: pointer;
+ transition: border-color .15s, background .15s;
+ margin-top: var(--space-3);
+}
+.file-upload-zone:hover, .file-upload-zone.drag-over {
+ border-color: var(--accent);
+ background: rgba(99,102,241,.05);
+}
+.file-upload-zone input[type="file"] { display:none; }
+.file-upload-zone-label {
+ font-size: var(--font-sm); color: var(--text-muted);
+ display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+}
+.file-upload-zone-label strong { color: var(--accent-light); font-size: var(--font-sm); }
+
+/* Note image attachment */
+.note-image-preview {
+ margin-top: var(--space-2);
+ display: flex; align-items: center; gap: var(--space-2);
+}
+.note-image-preview img {
+ width: 48px; height: 48px; object-fit: cover;
+ border-radius: 6px; border: 1px solid var(--border-default);
+}
+.note-image-preview .note-img-name { font-size: 11px; color: var(--text-secondary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.note-image-preview .note-img-clear { font-size: 11px; color: var(--danger); cursor: pointer; }
+.note-attach-btn { font-size: 11px; color: var(--text-muted); cursor: pointer; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border-default); background: var(--bg-card-hover); transition: border-color .15s, color .15s; }
+.note-attach-btn:hover { border-color: var(--accent); color: var(--accent-light); }
+.note-card-image { margin-top: var(--space-2); }
+.note-card-image img { max-width:100%; max-height:280px; border-radius: 8px; border:1px solid var(--border-default); cursor:pointer; }
+.note-card-image img:hover { opacity:.9; }
  /* ── Metrics ── */
  .metrics-grid {
  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -4949,13 +5003,18 @@ function _buildNotesSection(project) {
  function noteHtml(n) {
  const dt = new Date(n.timestamp);
  const when = dt.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+ const imgHtml = n.imageData
+  ? `<div class="note-card-image"><img src="${n.imageData}" alt="${escHtml(n.imageName||'attached image')}" title="Click to open" onclick="window.open(this.src,'_blank')" /></div>`
+  : '';
  return `<div class="note-card" data-note-id="${n.id}">
  <div class="note-header">
  <span class="note-author">${escHtml(n.author||CURRENT_USER)}</span>
  <span class="note-when">${when}</span>
+ ${n.imageData ? `<span style="font-size:11px;color:var(--text-muted)">📎 ${escHtml(n.imageName||'image')}</span>` : ''}
  <button class="task-action-btn danger note-del-btn" data-action="note-delete" data-note-id="${n.id}" title="Delete note">Del</button>
  </div>
  <div class="note-body" data-action="note-edit" data-note-id="${n.id}">${escHtml(n.body)}</div>
+ ${imgHtml}
  </div>`;
  }
 
@@ -4969,8 +5028,17 @@ function _buildNotesSection(project) {
  <!-- Add note form -->
  <div class="note-compose">
  <textarea id="new-note-body" class="input note-textarea" placeholder="Add a note, update, or action item…" rows="3"></textarea>
- <div style="display:flex;justify-content:flex-end;margin-top:var(--space-2)">
- <button class="btn btn-primary btn-sm" data-action="note-add">Add Note</button>
+ <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-2);gap:var(--space-2);flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:var(--space-2)">
+   <input type="file" id="new-note-img-input" accept="image/*" style="display:none" />
+   <label for="new-note-img-input" class="note-attach-btn" id="note-attach-label">📎 Attach Image</label>
+   <div id="note-img-preview" style="display:none" class="note-image-preview">
+    <img id="note-img-thumb" src="" alt="" />
+    <span class="note-img-name" id="note-img-filename"></span>
+    <span class="note-img-clear" id="note-img-clear" title="Remove image">✕</span>
+   </div>
+  </div>
+  <button class="btn btn-primary btn-sm" data-action="note-add">Add Note</button>
  </div>
  </div>
 
@@ -4989,6 +5057,51 @@ function _bindNotesSection(projectId) {
  const panel = document.getElementById('notes-panel');
  if (!panel) return;
 
+ // ── Image attachment state (local to this binding) ──
+ let _pendingImageData = null;
+ let _pendingImageName = null;
+
+ function clearNoteImage() {
+  _pendingImageData = null;
+  _pendingImageName = null;
+  const prev = panel.querySelector('#note-img-preview');
+  const thumb = panel.querySelector('#note-img-thumb');
+  const fname = panel.querySelector('#note-img-filename');
+  const inp = panel.querySelector('#new-note-img-input');
+  if (prev) prev.style.display = 'none';
+  if (thumb) thumb.src = '';
+  if (fname) fname.textContent = '';
+  if (inp) inp.value = '';
+ }
+
+ const imgInput = panel.querySelector('#new-note-img-input');
+ if (imgInput) {
+  imgInput.addEventListener('change', () => {
+   const file = imgInput.files[0];
+   if (!file) return;
+   if (file.size > 3 * 1024 * 1024) {
+    Toast.error('Image must be under 3 MB');
+    imgInput.value = '';
+    return;
+   }
+   const reader = new FileReader();
+   reader.onload = (ev) => {
+    _pendingImageData = ev.target.result;
+    _pendingImageName = file.name;
+    const prev = panel.querySelector('#note-img-preview');
+    const thumb = panel.querySelector('#note-img-thumb');
+    const fname = panel.querySelector('#note-img-filename');
+    if (thumb) thumb.src = _pendingImageData;
+    if (fname) fname.textContent = file.name;
+    if (prev) prev.style.display = 'flex';
+   };
+   reader.readAsDataURL(file);
+  });
+ }
+
+ const clearBtn = panel.querySelector('#note-img-clear');
+ if (clearBtn) clearBtn.addEventListener('click', clearNoteImage);
+
  panel.addEventListener('click', function handleNoteClick(e) {
  const btn = e.target.closest('[data-action]');
  if (!btn) return;
@@ -4998,16 +5111,22 @@ function _bindNotesSection(projectId) {
  if (action === 'note-add') {
  const ta = panel.querySelector('#new-note-body');
  const body = (ta?.value || '').trim();
- if (!body) { Toast.error('Note cannot be empty'); ta?.focus(); return; }
+ if (!body && !_pendingImageData) { Toast.error('Note cannot be empty'); ta?.focus(); return; }
  const proj = DB.getProject(projectId);
- const notes = [...(proj.notes||[]), {
- id: genId(), timestamp: new Date().toISOString(),
- author: CURRENT_USER, body
- }];
+ const noteObj = {
+  id: genId(), timestamp: new Date().toISOString(),
+  author: CURRENT_USER, body: body || ''
+ };
+ if (_pendingImageData) {
+  noteObj.imageData = _pendingImageData;
+  noteObj.imageName = _pendingImageName;
+ }
+ const notes = [...(proj.notes||[]), noteObj];
  DB.updateProject(projectId, { notes });
  _refreshNotesSection(projectId);
  _updateDetailTabBadge('notes', notes.length);
  ta.value = '';
+ clearNoteImage();
  Toast.success('Note added');
  return;
  }
@@ -5084,39 +5203,87 @@ function _refreshNotesSection(projectId) {
  _bindNotesSection(projectId);
 }
 
+/* ── Auto-detect file type from URL or MIME type ── */
+function detectFileType(url, mimeType) {
+ if (mimeType) {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType === 'application/pdf') return 'pdf';
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return 'sheet';
+  if (mimeType.includes('word') || mimeType.includes('document')) return 'doc';
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'slide';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.includes('zip') || mimeType.includes('archive') || mimeType.includes('compressed')) return 'zip';
+  return 'other';
+ }
+ if (!url) return 'link';
+ const u = url.toLowerCase();
+ if (u.includes('figma.com')) return 'figma';
+ if (u.includes('docs.google.com/spreadsheets') || u.includes('sheets.google.com')) return 'sheet';
+ if (u.includes('docs.google.com/document')) return 'doc';
+ if (u.includes('docs.google.com/presentation') || u.includes('slides.google.com')) return 'slide';
+ if (u.includes('drive.google.com')) return 'link';
+ if (u.includes('youtube.com') || u.includes('youtu.be') || u.includes('vimeo.com')) return 'video';
+ if (u.includes('slack.com')) return 'link';
+ if (u.match(/\.(pdf)(\?|$|#)/)) return 'pdf';
+ if (u.match(/\.(png|jpg|jpeg|gif|webp|svg|bmp|tiff)(\?|$|#)/)) return 'image';
+ if (u.match(/\.(doc|docx)(\?|$|#)/)) return 'doc';
+ if (u.match(/\.(xls|xlsx|csv)(\?|$|#)/)) return 'sheet';
+ if (u.match(/\.(ppt|pptx)(\?|$|#)/)) return 'slide';
+ if (u.match(/\.(mp4|mov|avi|mkv|webm)(\?|$|#)/)) return 'video';
+ if (u.match(/\.(zip|rar|7z|gz|tar)(\?|$|#)/)) return 'zip';
+ return 'link';
+}
+
 function _buildFilesSection(project) {
  const files = [...(project.files || [])].sort((a,b) => (a.dateAdded > b.dateAdded ? -1 : 1));
 
  const FILE_ICONS = {
- link:'', pdf:'', figma:'', doc:'', sheet:'',
- image:'', video:'', zip:'', other:''
+ link:'🔗', pdf:'📄', figma:'🎨', doc:'📝', sheet:'📊',
+ image:'🖼', video:'🎬', zip:'🗜', other:'📎', slide:'📑'
+ };
+
+ const FILE_TYPE_LABELS = {
+ link:'Website', pdf:'PDF', figma:'Figma', doc:'Word Doc', sheet:'Spreadsheet',
+ image:'Image', video:'Video', zip:'Archive', other:'File', slide:'Slides'
  };
 
  function fileRow(f) {
- const icon = FILE_ICONS[f.type] || FILE_ICONS.link;
+ const type = f.type || 'link';
+ const icon = FILE_ICONS[type] || FILE_ICONS.link;
+ const label = FILE_TYPE_LABELS[type] || type;
  const dt = f.dateAdded ? formatDateShort(f.dateAdded) : '—';
- const hasUrl = f.url && f.url !== '#';
+ // If it's an uploaded file with a dataUrl, use that for the link
+ const href = f.dataUrl || (f.url && f.url !== '#' ? f.url : null);
+ const isUpload = !!f.dataUrl;
+ const isImage = type === 'image' && f.dataUrl;
+
  return `<div class="file-row" data-file-id="${f.id}">
- <div class="file-icon-wrap">${icon}</div>
+ <div class="file-icon-wrap">
+  ${isImage
+   ? `<img class="file-thumb" src="${f.dataUrl}" alt="${escHtml(f.name)}" onclick="window.open(this.src,'_blank')" title="Click to open" />`
+   : `<span style="font-size:22px">${icon}</span>`}
+ </div>
  <div class="file-body">
  <div class="file-name">
- ${hasUrl
- ? `<a href="${escHtml(f.url)}" target="_blank" rel="noopener" class="file-link">${escHtml(f.name)}</a>`
- : `<span class="file-name-static" data-action="file-edit-name" data-file-id="${f.id}">${escHtml(f.name)}</span>`
+ ${href
+  ? `<a href="${escHtml(href)}" ${isUpload ? `download="${escHtml(f.name)}"` : 'target="_blank" rel="noopener"'} class="file-link">${escHtml(f.name)}</a>`
+  : `<span class="file-name-static" data-action="file-edit-name" data-file-id="${f.id}">${escHtml(f.name)}</span>`
  }
  </div>
  <div class="file-meta">
- <span class="file-type-badge">${f.type||'link'}</span>
+ <span class="file-type-badge type-${type}">${label}</span>
+ ${isUpload ? '<span>Uploaded</span>' : ''}
  <span>Added ${dt}</span>
  ${f.addedBy ? `<span>by ${escHtml(f.addedBy)}</span>` : ''}
+ ${f.fileSize ? `<span>${f.fileSize}</span>` : ''}
  </div>
- ${hasUrl ? `<div class="file-url-preview" data-action="file-edit-url" data-file-id="${f.id}">${escHtml(f.url)}</div>` : ''}
+ ${!isUpload && href ? `<div class="file-url-preview" data-action="file-edit-url" data-file-id="${f.id}">${escHtml(href)}</div>` : ''}
  </div>
  <button class="task-action-btn danger file-del-btn" data-action="file-delete" data-file-id="${f.id}" title="Remove">Del</button>
  </div>`;
  }
 
- const FILE_TYPES = ['link','pdf','figma','doc','sheet','image','video','zip','other'];
+ const FILE_TYPES = ['link','pdf','figma','doc','sheet','slide','image','video','zip','other'];
 
  return `
  <div class="dv-card" id="files-panel">
@@ -5125,27 +5292,53 @@ function _buildFilesSection(project) {
  <span class="tasks-stats"><span class="stat-highlight">${files.length}</span> item${files.length!==1?'s':''}</span>
  </div>
 
- <!-- ── Add Link / File (clean, prominent form) ── -->
- <div class="task-add-box" style="margin-bottom:var(--space-4)">
- <div class="task-add-box-title">+ Add a Link or File</div>
+ <!-- ── Add a URL Link ── -->
+ <div class="task-add-box" style="margin-bottom:var(--space-3)">
+ <div class="task-add-box-title">+ Add a Link</div>
  <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:flex-end">
  <div style="flex:2;min-width:160px">
- <div class="task-add-label">Name *</div>
- <input id="new-file-name" class="input input-sm" type="text" placeholder="e.g. Design Brief, Figma Link…" autocomplete="off" />
+  <div class="task-add-label">Name *</div>
+  <input id="new-file-name" class="input input-sm" type="text" placeholder="e.g. Design Brief, Figma Link…" autocomplete="off" />
  </div>
  <div style="flex:3;min-width:200px">
- <div class="task-add-label">URL</div>
- <input id="new-file-url" class="input input-sm" type="url" placeholder="https://…" autocomplete="off" />
+  <div class="task-add-label">URL</div>
+  <input id="new-file-url" class="input input-sm" type="url" placeholder="https://…" autocomplete="off" />
  </div>
- <div style="flex:1;min-width:100px">
- <div class="task-add-label">Type</div>
- <select id="new-file-type" class="input input-sm">
- ${FILE_TYPES.map(t=>`<option value="${t}"${t==='link'?' selected':''}>${t}</option>`).join('')}
- </select>
+ <div style="flex:1;min-width:110px">
+  <div class="task-add-label">Type <span style="font-size:10px;color:var(--text-muted)">(auto-detected)</span></div>
+  <select id="new-file-type" class="input input-sm">
+  ${FILE_TYPES.map(t=>`<option value="${t}"${t==='link'?' selected':''}>${FILE_TYPE_LABELS[t]||t}</option>`).join('')}
+  </select>
  </div>
  <div>
- <button class="btn btn-primary btn-sm" data-action="file-add">Add Link</button>
+  <button class="btn btn-primary btn-sm" data-action="file-add">Add Link</button>
  </div>
+ </div>
+ </div>
+
+ <!-- ── Upload a File ── -->
+ <div class="task-add-box" style="margin-bottom:var(--space-4)">
+ <div class="task-add-box-title">⬆ Upload a File</div>
+ <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:flex-start">
+  <div style="flex:1;min-width:200px">
+  <label class="file-upload-zone" id="file-upload-zone" for="file-upload-input">
+   <input type="file" id="file-upload-input" accept="*/*" />
+   <div class="file-upload-zone-label" id="file-upload-label">
+    <span style="font-size:28px">📎</span>
+    <strong>Click to choose a file</strong>
+    <span>or drag and drop · PDF, images, docs, etc.</span>
+    <span style="font-size:10px;color:var(--text-disabled)">Max 4 MB — large files may slow down storage</span>
+   </div>
+  </label>
+  </div>
+  <div id="file-upload-preview" style="display:none;flex:1;min-width:200px">
+  <div style="font-size:var(--font-sm);font-weight:600;color:var(--text-primary);margin-bottom:4px" id="file-upload-fname"></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-bottom:var(--space-2)" id="file-upload-fmeta"></div>
+  <div style="display:flex;gap:var(--space-2)">
+   <button class="btn btn-primary btn-sm" data-action="file-upload-confirm">Save File</button>
+   <button class="btn btn-secondary btn-sm" data-action="file-upload-cancel">Cancel</button>
+  </div>
+  </div>
  </div>
  </div>
 
@@ -5165,6 +5358,96 @@ function _bindFilesSection(projectId) {
  const panel = document.getElementById('files-panel');
  if (!panel) return;
 
+ // ── Upload state ──
+ let _pendingUploadFile = null;
+ let _pendingUploadData = null;
+
+ function resetUpload() {
+  _pendingUploadFile = null;
+  _pendingUploadData = null;
+  const inp = panel.querySelector('#file-upload-input');
+  const prev = panel.querySelector('#file-upload-preview');
+  const zone = panel.querySelector('#file-upload-zone');
+  if (inp) inp.value = '';
+  if (prev) prev.style.display = 'none';
+  if (zone) zone.style.display = '';
+ }
+
+ // ── URL input → auto-detect type ──
+ const urlInput = panel.querySelector('#new-file-url');
+ const typeSelect = panel.querySelector('#new-file-type');
+ if (urlInput && typeSelect) {
+  urlInput.addEventListener('input', () => {
+   const url = urlInput.value.trim();
+   if (!url) return;
+   const detected = detectFileType(url);
+   typeSelect.value = detected;
+  });
+  urlInput.addEventListener('paste', () => {
+   setTimeout(() => {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    // Also auto-fill name from URL if name field is empty
+    const nameInput = panel.querySelector('#new-file-name');
+    const detected = detectFileType(url);
+    typeSelect.value = detected;
+    if (nameInput && !nameInput.value.trim()) {
+     try {
+      const u = new URL(url);
+      const parts = u.pathname.split('/').filter(Boolean);
+      const lastPart = parts[parts.length - 1] || u.hostname.replace('www.','');
+      const cleaned = decodeURIComponent(lastPart).replace(/[-_]/g,' ').replace(/\.\w+$/, '');
+      if (cleaned.length > 2 && cleaned.length < 60) nameInput.value = cleaned;
+     } catch(_) {}
+    }
+   }, 50);
+  });
+ }
+
+ // ── File upload input ──
+ const fileInput = panel.querySelector('#file-upload-input');
+ const uploadZone = panel.querySelector('#file-upload-zone');
+
+ function handleFileSelected(file) {
+  if (!file) return;
+  const MB = file.size / (1024*1024);
+  if (MB > 4) {
+   Toast.error(`File is ${MB.toFixed(1)} MB — max 4 MB. Use a link for larger files.`);
+   return;
+  }
+  _pendingUploadFile = file;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+   _pendingUploadData = ev.target.result;
+   const prev = panel.querySelector('#file-upload-preview');
+   const fname = panel.querySelector('#file-upload-fname');
+   const fmeta = panel.querySelector('#file-upload-fmeta');
+   const type = detectFileType(null, file.type);
+   if (prev) prev.style.display = '';
+   if (uploadZone) uploadZone.style.display = 'none';
+   if (fname) fname.textContent = file.name;
+   if (fmeta) fmeta.textContent = `${MB < 1 ? (file.size/1024).toFixed(0)+' KB' : MB.toFixed(2)+' MB'} · ${type.toUpperCase()}`;
+  };
+  reader.readAsDataURL(file);
+ }
+
+ if (fileInput) {
+  fileInput.addEventListener('change', () => handleFileSelected(fileInput.files[0]));
+ }
+
+ // Drag-and-drop onto upload zone
+ if (uploadZone) {
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+   e.preventDefault();
+   uploadZone.classList.remove('drag-over');
+   const file = e.dataTransfer?.files[0];
+   if (file) handleFileSelected(file);
+  });
+ }
+
+ // ── Click delegation ──
  panel.addEventListener('click', function handleFileClick(e) {
  const btn = e.target.closest('[data-action]');
  if (!btn) return;
@@ -5175,21 +5458,54 @@ function _bindFilesSection(projectId) {
  const name = (panel.querySelector('#new-file-name')?.value||'').trim();
  const url = (panel.querySelector('#new-file-url')?.value||'').trim();
  const type = panel.querySelector('#new-file-type')?.value || 'link';
- if (!name) { Toast.error('Please add a name for this link or file'); panel.querySelector('#new-file-name')?.focus(); return; }
- if (!url) { Toast.error('Don\'t forget to paste the link URL before adding!'); panel.querySelector('#new-file-url')?.focus(); return; }
+ if (!name) { Toast.error('Please add a name for this link'); panel.querySelector('#new-file-name')?.focus(); return; }
+ if (!url) { Toast.error('Please paste a URL before adding'); panel.querySelector('#new-file-url')?.focus(); return; }
  const proj = DB.getProject(projectId);
  const files = [...(proj.files||[]), {
- id: genId(), name, url: url||'#', type,
+ id: genId(), name, url, type,
  dateAdded: new Date().toISOString().slice(0,10),
  addedBy: CURRENT_USER
  }];
  DB.updateProject(projectId, { files });
  _refreshFilesSection(projectId);
  _updateDetailTabBadge('files', files.length);
- panel.querySelector('#new-file-name').value = '';
- panel.querySelector('#new-file-url').value = '';
- Toast.success('File added');
+ Toast.success('Link added');
  return;
+ }
+
+ if (action === 'file-upload-confirm') {
+  if (!_pendingUploadFile || !_pendingUploadData) { Toast.error('No file selected'); return; }
+  const file = _pendingUploadFile;
+  const MB = file.size / (1024*1024);
+  const sizeLabel = MB < 1 ? `${(file.size/1024).toFixed(0)} KB` : `${MB.toFixed(2)} MB`;
+  const type = detectFileType(null, file.type);
+  const proj = DB.getProject(projectId);
+  const files = [...(proj.files||[]), {
+   id: genId(),
+   name: file.name,
+   url: '#',
+   dataUrl: _pendingUploadData,
+   type,
+   fileSize: sizeLabel,
+   dateAdded: new Date().toISOString().slice(0,10),
+   addedBy: CURRENT_USER
+  }];
+  try {
+   DB.updateProject(projectId, { files });
+  } catch(storageErr) {
+   Toast.error('Storage full — file too large. Try uploading a smaller file or use a link instead.');
+   resetUpload();
+   return;
+  }
+  _refreshFilesSection(projectId);
+  _updateDetailTabBadge('files', files.length);
+  Toast.success(`${file.name} uploaded`);
+  return;
+ }
+
+ if (action === 'file-upload-cancel') {
+  resetUpload();
+  return;
  }
 
  if (action === 'file-delete') {
@@ -5389,11 +5705,12 @@ function _buildIntegrationsSection(project) {
  <div class="dv-card" id="integrations-panel">
  <div class="dv-section-title" style="margin-bottom:var(--space-5)">Integrations & Links</div>
  <div class="integ-list">
- ${linkRow('HubSpot Deal', '', 'hubspotUrl', 'HubSpot deal URL')}
- ${linkRow('Google Drive', '', 'driveUrl', 'Drive folder URL')}
- ${linkRow('Slack Channel', '', 'slackUrl', 'Slack channel URL')}
- ${linkRow('Email Thread', '', 'emailThreadUrl', 'Email thread URL')}
- ${linkRow('Last Contact Date', '', 'lastContactDate', 'YYYY-MM-DD')}
+ ${linkRow('HubSpot Deal', '🟠', 'hubspotUrl', 'HubSpot deal URL')}
+ ${linkRow('Google Drive', '📁', 'driveUrl', 'Drive folder URL')}
+ ${linkRow('Google Client Chat', '💬', 'googleChatUrl', 'Google Chat space URL')}
+ ${linkRow('Slack Channel', '💜', 'slackUrl', 'Slack channel URL')}
+ ${linkRow('Email Thread', '📧', 'emailThreadUrl', 'Email thread URL')}
+ ${linkRow('Last Contact Date', '📅', 'lastContactDate', 'YYYY-MM-DD')}
  </div>
  <div style="font-size:11px;color:var(--text-muted);margin-top:var(--space-4)">Click any field to edit · Links open in a new tab</div>
  </div>
