@@ -3958,7 +3958,7 @@ function _buildDetailView(project) {
  </div>
  <div style="flex-shrink:0" id="dv-topbar-status">${statusBadgeHtml(project.status)}</div>
  <div class="dv-topbar-actions">
- <button class="btn btn-sm no-print${project.isBigBet ? ' big-bet-active' : ''}" id="dv-bigbet-btn" title="Toggle Big Bet">${project.isBigBet ? 'Big Bet' : 'Mark Big Bet'}</button>
+ <button class="btn btn-secondary btn-sm no-print${project.isBigBet ? ' big-bet-active' : ''}" id="dv-bigbet-btn" title="Toggle Big Bet">★ ${project.isBigBet ? 'Big Bet' : 'Mark as Big Bet'}</button>
  <button class="btn btn-secondary btn-sm no-print" id="dv-pdf-btn" title="Export PDF">PDF Export</button>
  <button class="btn btn-sm no-print dv-delete-btn" id="dv-delete-btn" title="Delete project">Delete Project</button>
  </div>
@@ -4037,7 +4037,7 @@ function _bindDetailViewEvents(projectId) {
    if (!proj) return;
    const newVal = !proj.isBigBet;
    DB.updateProject(projectId, { isBigBet: newVal });
-   bigBetBtn.textContent = newVal ? 'Big Bet' : 'Mark Big Bet';
+   bigBetBtn.textContent = newVal ? '★ Big Bet' : '★ Mark as Big Bet';
    bigBetBtn.classList.toggle('big-bet-active', newVal);
    Toast.success(newVal ? 'Marked as Big Bet' : 'Big Bet removed');
   });
