@@ -2085,7 +2085,144 @@
  padding: 2px 8px;
  }
 
- /* ═══════════════════════════════════════════════
+ /* ── Big Bet badge ── */
+.big-bet-badge {
+ display: inline-flex;
+ align-items: center;
+ gap: 4px;
+ font-size: 10px;
+ font-weight: 700;
+ letter-spacing: 0.04em;
+ text-transform: uppercase;
+ color: #92400e;
+ background: linear-gradient(135deg, #fef3c7, #fde68a);
+ border: 1px solid #fbbf24;
+ border-radius: var(--radius-full);
+ padding: 2px 8px;
+ flex-shrink: 0;
+}
+.big-bet-badge::before { content: '★ '; font-size: 9px; }
+
+button.big-bet-active {
+ background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+ color: #92400e !important;
+ border-color: #fbbf24 !important;
+ font-weight: 700 !important;
+}
+
+/* ── AM (Account Manager) tag ── */
+.am-badge {
+ display: inline-flex;
+ align-items: center;
+ gap: 3px;
+ font-size: 9px;
+ font-weight: 700;
+ letter-spacing: 0.06em;
+ text-transform: uppercase;
+ color: #1d4ed8;
+ background: rgba(59,130,246,0.12);
+ border: 1px solid rgba(59,130,246,0.3);
+ border-radius: var(--radius-full);
+ padding: 1px 6px;
+ cursor: pointer;
+ transition: background 0.15s;
+}
+.am-badge:hover { background: rgba(59,130,246,0.2); }
+.dv-member-tag.is-am { border-color: rgba(59,130,246,0.35); }
+.dv-member-tag-am-btn {
+ font-size: 9px;
+ color: var(--text-muted);
+ cursor: pointer;
+ padding: 1px 3px;
+ border-radius: 3px;
+ transition: color 0.15s;
+}
+.dv-member-tag-am-btn:hover { color: #3b82f6; }
+.dv-member-tag-am-btn.is-am { color: #3b82f6; font-weight: 700; }
+
+/* ═══════════════════════════════════════════════
+ LIST VIEW
+═══════════════════════════════════════════════ */
+#project-grid.list-view {
+ display: flex;
+ flex-direction: column;
+ gap: var(--space-2);
+}
+
+.project-list-item {
+ display: grid;
+ grid-template-columns: 1fr 120px 120px 100px 110px 90px;
+ align-items: center;
+ gap: var(--space-3);
+ background: var(--bg-card);
+ border: 1px solid var(--border-subtle);
+ border-radius: var(--radius-md);
+ padding: var(--space-3) var(--space-4);
+ cursor: pointer;
+ transition: background 0.15s, border-color 0.15s;
+ position: relative;
+ overflow: hidden;
+}
+.project-list-item::before {
+ content: '';
+ position: absolute;
+ left: 0; top: 0; bottom: 0;
+ width: 3px;
+}
+.project-list-item.status-not-started::before { background: var(--status-not-started); }
+.project-list-item.status-in-discussion::before { background: var(--status-in-discussion); }
+.project-list-item.status-in-progress::before { background: linear-gradient(180deg, #6366f1, #8b5cf6); }
+.project-list-item.status-launching::before { background: linear-gradient(180deg, #3b82f6, #fbbf24); }
+.project-list-item.status-live::before { background: var(--status-live); }
+.project-list-item.status-completed::before { background: var(--status-completed); }
+.project-list-item.status-paused::before { background: var(--status-paused); }
+
+.project-list-item:hover { background: var(--bg-card-hover); border-color: var(--border-default); }
+.project-list-item:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.pli-name-wrap { min-width: 0; }
+.pli-client {
+ font-size: var(--font-xs);
+ font-weight: 600;
+ color: var(--text-muted);
+ text-transform: uppercase;
+ letter-spacing: 0.06em;
+ margin-bottom: 2px;
+ display: flex; align-items: center; gap: 6px;
+}
+.pli-name {
+ font-size: var(--font-sm);
+ font-weight: 600;
+ color: var(--text-primary);
+ white-space: nowrap;
+ overflow: hidden;
+ text-overflow: ellipsis;
+}
+.pli-value {
+ font-size: var(--font-md);
+ font-weight: 700;
+ color: var(--text-primary);
+}
+.pli-deadline {
+ font-size: var(--font-sm);
+ color: var(--text-secondary);
+}
+.pli-deadline.overdue { color: var(--danger); font-weight: 600; }
+.pli-progress-wrap { display: flex; flex-direction: column; gap: 4px; }
+.pli-progress-label { font-size: var(--font-xs); color: var(--text-muted); }
+.pli-progress-bar { height: 4px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
+.pli-progress-fill { height: 100%; background: var(--accent); border-radius: 99px; }
+
+/* View toggle button */
+.view-toggle-btn {
+ display: inline-flex;
+ align-items: center;
+ gap: 5px;
+ font-size: var(--font-xs);
+}
+.view-toggle-btn svg { width: 14px; height: 14px; opacity: 0.75; }
+
+/* ═══════════════════════════════════════════════
  STATS BAR — Task 2
  ═══════════════════════════════════════════════ */
  .stat-card {
@@ -3006,6 +3143,8 @@ const DB = {
  if (!p.integrations) p.integrations = {};
  if (!p.teamMembers) p.teamMembers = [];
  if (p.pausedProgress === undefined) p.pausedProgress = null;
+  if (p.isBigBet === undefined) p.isBigBet = false;
+  if (p.accountManager === undefined) p.accountManager = '';
  if (!p.lastUpdated) p.lastUpdated = nowISO();
  });
  if (!this._data.clients) this._data.clients = [];
@@ -3154,6 +3293,7 @@ const AppState = {
  taskSortBy: 'dueDate',
  taskSortDir: 'asc',
  hideDone: false, // hide Live + Completed from dashboard
+ viewMode: 'grid', // 'grid' | 'list'
 };
 
 /* ─────────────────────────────────────────────────
@@ -3404,7 +3544,10 @@ function projectCardHtml(project) {
 
  <div class="project-card-top">
  <div class="project-card-client truncate">${escHtml(project.clientName)}</div>
- <div style="flex-shrink:0">${statusBadgeHtml(project.status)}</div>
+ <div style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
+  ${project.isBigBet ? '<span class="big-bet-badge">Big Bet</span>' : ''}
+  ${statusBadgeHtml(project.status)}
+ </div>
  </div>
 
  <div class="project-card-name">${escHtml(project.projectName)}</div>
@@ -3434,20 +3577,66 @@ function projectCardHtml(project) {
 }
 
 /* ─────────────────────────────────────────────────
+ PROJECT LIST ITEM HTML (list view)
+───────────────────────────────────────────────── */
+function projectListItemHtml(project) {
+ const sk = statusKey(project.status);
+ const isPaused = project.status === 'Paused';
+ const progress = isPaused
+  ? (project.pausedProgress ?? project.progress ?? 0)
+  : (project.progress ?? 0);
+
+ const nd = getNextDeadline(project);
+ let deadlineDisplay = nd ? formatDateShort(nd) : '—';
+ let deadlineCls = '';
+ if (nd && isOverdue(nd)) {
+  const days = Math.abs(daysUntil(nd));
+  deadlineDisplay = `${formatDateShort(nd)} · ${days}d overdue`;
+  deadlineCls = 'overdue';
+ } else if (nd) {
+  const days = daysUntil(nd);
+  if (days >= 0 && days <= 3) deadlineCls = 'soon';
+ }
+
+ const amName = project.accountManager || '';
+ const amHtml = amName ? `<span class="am-badge" title="Account Manager">${escHtml(amName)}</span>` : '';
+ const bigBetHtml = project.isBigBet ? '<span class="big-bet-badge">Big Bet</span>' : '';
+
+ return `
+ <div class="project-list-item status-${sk}" data-id="${project.id}" tabindex="0" role="button">
+  <div class="pli-name-wrap">
+   <div class="pli-client">${escHtml(project.clientName)} ${amHtml} ${bigBetHtml}</div>
+   <div class="pli-name">${escHtml(project.projectName)}</div>
+  </div>
+  <div class="pli-value">${formatCurrency(project.value)}</div>
+  <div class="pli-deadline ${deadlineCls}">${deadlineDisplay}</div>
+  <div>${statusBadgeHtml(project.status)}</div>
+  <div class="pli-progress-wrap">
+   <div class="pli-progress-label">${progress}%${isPaused ? ' (paused)' : ''}</div>
+   <div class="pli-progress-bar"><div class="pli-progress-fill" style="width:${progress}%"></div></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:flex-end">${teamAvatarsHtml(project.teamMembers)}</div>
+ </div>`;
+}
+
+/* ─────────────────────────────────────────────────
  RENDER PROJECT GRID — Task 2
 ───────────────────────────────────────────────── */
 function renderProjectGrid() {
  const grid = document.getElementById('project-grid');
  if (!grid) return;
 
+ const isList = AppState.viewMode === 'list';
+ grid.classList.toggle('list-view', isList);
+
  const projects = getFilteredProjects();
 
- // Update stats bar with ALL projects (not filtered) for global counts
- renderStatsBar(getFilteredProjects());
+ // Update stats bar with filtered projects
+ renderStatsBar(projects);
 
  if (!projects.length) {
  grid.innerHTML = `
- <div class="empty-state" style="grid-column:1/-1">
+ <div class="empty-state" style="${isList ? '' : 'grid-column:1/-1'}">
  <div class="empty-state-icon"></div>
  <div class="empty-state-title">No projects found</div>
  <div class="empty-state-desc">Try adjusting your filters or add a new project to get started.</div>
@@ -3455,16 +3644,25 @@ function renderProjectGrid() {
  return;
  }
 
- grid.innerHTML = projects.map(p => projectCardHtml(p)).join('');
-
- // Attach click + keyboard handlers
- grid.querySelectorAll('.project-card').forEach(card => {
- const id = card.dataset.id;
- card.addEventListener('click', () => openDetailView(id));
- card.addEventListener('keydown', e => {
- if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetailView(id); }
- });
- });
+ if (isList) {
+  grid.innerHTML = projects.map(p => projectListItemHtml(p)).join('');
+  grid.querySelectorAll('.project-list-item').forEach(item => {
+   const id = item.dataset.id;
+   item.addEventListener('click', () => openDetailView(id));
+   item.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetailView(id); }
+   });
+  });
+ } else {
+  grid.innerHTML = projects.map(p => projectCardHtml(p)).join('');
+  grid.querySelectorAll('.project-card').forEach(card => {
+   const id = card.dataset.id;
+   card.addEventListener('click', () => openDetailView(id));
+   card.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetailView(id); }
+   });
+  });
+ }
 }
 
 /* ─────────────────────────────────────────────────
@@ -3719,7 +3917,6 @@ const DV_TABS = [
  { id: 'timeline', label: 'Timeline', icon: '' },
  { id: 'notes', label: 'Notes', icon: '' },
  { id: 'files', label: 'Links & Files', icon: '' },
- { id: 'metrics', label: 'Metrics', icon: '' },
  { id: 'integrations', label: 'Integrations', icon: '' },
 ];
 
@@ -3761,6 +3958,7 @@ function _buildDetailView(project) {
  </div>
  <div style="flex-shrink:0" id="dv-topbar-status">${statusBadgeHtml(project.status)}</div>
  <div class="dv-topbar-actions">
+ <button class="btn btn-sm no-print${project.isBigBet ? ' big-bet-active' : ''}" id="dv-bigbet-btn" title="Toggle Big Bet">${project.isBigBet ? 'Big Bet' : 'Mark Big Bet'}</button>
  <button class="btn btn-secondary btn-sm no-print" id="dv-pdf-btn" title="Export PDF">PDF Export</button>
  <button class="btn btn-sm no-print dv-delete-btn" id="dv-delete-btn" title="Delete project">Delete Project</button>
  </div>
@@ -3796,12 +3994,7 @@ function _buildDetailView(project) {
  ${_buildFilesSection(project)}
  </div>
 
- <!-- Section 6: Metrics (Task 9) -->
- <div id="dv-section-metrics" class="dv-section${AppState.activeDetailTab==='metrics'?' active':''}">
- ${_buildMetricsSection(project)}
- </div>
-
- <!-- Section 7: Integrations (Task 9) -->
+ <!-- Section 6: Integrations (Task 9) -->
  <div id="dv-section-integrations" class="dv-section${AppState.activeDetailTab==='integrations'?' active':''}">
  ${_buildIntegrationsSection(project)}
  </div>
@@ -3833,6 +4026,20 @@ function _bindDetailViewEvents(projectId) {
   renderProjectGrid();
   renderFilterBar();
   Toast.success('Project deleted');
+  });
+ }
+
+ // Big Bet toggle
+ const bigBetBtn = document.getElementById('dv-bigbet-btn');
+ if (bigBetBtn && !VIEWER_MODE) {
+  bigBetBtn.addEventListener('click', () => {
+   const proj = DB.getProject(projectId);
+   if (!proj) return;
+   const newVal = !proj.isBigBet;
+   DB.updateProject(projectId, { isBigBet: newVal });
+   bigBetBtn.textContent = newVal ? 'Big Bet' : 'Mark Big Bet';
+   bigBetBtn.classList.toggle('big-bet-active', newVal);
+   Toast.success(newVal ? 'Marked as Big Bet' : 'Big Bet removed');
   });
  }
 
@@ -3870,7 +4077,7 @@ function _buildHeaderSection(project) {
  ? new Date(project.lastUpdated).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})
  : '—';
 
- const teamHtml = _buildTeamTagsHtml(project.teamMembers || []);
+ const teamHtml = _buildTeamTagsHtml(project.teamMembers || [], project.accountManager);
 
  return `
  <!-- Project name + value hero -->
@@ -3993,13 +4200,20 @@ function _buildHeaderSection(project) {
 }
 
 /* ── Team tags HTML ── */
-function _buildTeamTagsHtml(members) {
- const tagsHtml = members.map((m, i) =>
- `<span class="dv-member-tag">
+function _buildTeamTagsHtml(members, accountManager) {
+ const am = accountManager || '';
+ const tagsHtml = members.map((m, i) => {
+  const isAm = m === am;
+  return `<span class="dv-member-tag${isAm ? ' is-am' : ''}">
  ${escHtml(m)}
+ <span class="dv-member-tag-am-btn${isAm ? ' is-am' : ''}" data-idx="${i}" data-name="${escHtml(m)}" title="${isAm ? 'Remove AM role' : 'Set as Account Manager'}">★</span>
  <span class="dv-member-tag-remove" data-idx="${i}" title="Remove">×</span>
- </span>`
- ).join('');
+ </span>`;
+ }).join('');
+
+ const amHintHtml = am
+  ? `<div style="font-size:var(--font-xs);color:var(--text-muted);margin-top:4px">★ = Account Manager (${escHtml(am)}). Click ★ on any member to reassign.</div>`
+  : (members.length ? `<div style="font-size:var(--font-xs);color:var(--text-muted);margin-top:4px">Click ★ on a member to set them as Account Manager.</div>` : '');
 
  return `
  <div class="dv-team-tags" id="dv-team-tags" tabindex="0" title="Click to add member">
@@ -4008,6 +4222,7 @@ function _buildTeamTagsHtml(members) {
  ${members.length ? '' : 'No team members — '}click to add
  </span>
  </div>
+ ${amHintHtml}
  <div class="dv-team-edit-row" id="dv-team-edit-row" style="display:none">
  <input id="dv-team-input" class="input input-sm" type="text"
  placeholder="Add name and press Enter" style="flex:1" />
@@ -4062,7 +4277,7 @@ function _buildTasksSection(project) {
  ${blocked > 0 ? `· <span style="color:var(--status-launching);font-weight:600">${blocked} blocked</span>` : ''}
  </span>` : '';
 
- const rowsHtml = sorted.length ? sorted.map(t => _buildTaskRow(t, project.id)).join('') : `
+ const rowsHtml = sorted.length ? sorted.map(t => _buildTaskRow(t, project.id, project.teamMembers || [])).join('') : `
  <tr><td colspan="8" style="text-align:center;padding:var(--space-6);color:var(--text-muted);font-size:var(--font-sm)">
  No tasks yet — use the form above to add one
  </td></tr>`;
@@ -4080,7 +4295,11 @@ function _buildTasksSection(project) {
  </div>
  <div>
  <div class="task-add-label">Owner</div>
- <input id="new-task-owner" class="input input-sm" type="text" placeholder="Assign to…" value="${escHtml(CURRENT_USER)}" autocomplete="off" />
+ <select id="new-task-owner" class="input input-sm">
+  <option value="">— Unassigned —</option>
+  ${(project.teamMembers||[]).map(m => `<option value="${escHtml(m)}"${m===CURRENT_USER?' selected':''}>${escHtml(m)}</option>`).join('')}
+  <option value="__new__">+ Add new…</option>
+ </select>
  </div>
  <div>
  <div class="task-add-label">Due Date</div>
@@ -4144,7 +4363,8 @@ function _buildTasksSection(project) {
 }
 
 
-function _buildTaskRow(task, projectId) {
+function _buildTaskRow(task, projectId, teamMembers) {
+ const members = teamMembers || [];
  const isDone = task.status === 'Done';
  const od = !isDone && task.dueDate && isOverdue(task.dueDate);
  const days = task.dueDate ? daysUntil(task.dueDate) : null;
@@ -4169,6 +4389,19 @@ function _buildTaskRow(task, projectId) {
  ? `<button class="task-check-btn done" data-action="toggle-done" data-task-id="${task.id}" title="Mark not done"></button>`
  : `<button class="task-check-btn" data-action="toggle-done" data-task-id="${task.id}" title="Mark as done"></button>`;
 
+ // Owner cell: dropdown from team members + unassigned + custom entry
+ const currentOwner = task.owner || '';
+ const memberInList = members.includes(currentOwner);
+ // Build options: blank, each member, and if current owner is custom (not in list) add it
+ let ownerOpts = `<option value="">—</option>`;
+ members.forEach(m => {
+  ownerOpts += `<option value="${escHtml(m)}"${m === currentOwner ? ' selected' : ''}>${escHtml(m)}</option>`;
+ });
+ if (currentOwner && !memberInList) {
+  ownerOpts += `<option value="${escHtml(currentOwner)}" selected>${escHtml(currentOwner)}</option>`;
+ }
+ ownerOpts += `<option value="__new__">+ Add new…</option>`;
+
  return `
  <tr class="task-row${isDone?' is-done':''}${od?' is-overdue':''}" data-task-id="${task.id}">
  <td style="text-align:center;width:36px;padding:var(--space-2)">${checkBtn}</td>
@@ -4176,7 +4409,9 @@ function _buildTaskRow(task, projectId) {
  <span class="task-cell-editable" data-action="edit-cell" data-field="name" data-task-id="${task.id}">${escHtml(task.name)}</span>
  </td>
  <td>
- <span class="task-cell-editable" data-action="edit-cell" data-field="owner" data-task-id="${task.id}" style="color:var(--text-secondary)">${escHtml(task.owner||'—')}</span>
+ <select class="task-cell-select" data-action="owner-change" data-task-id="${task.id}" style="min-width:100px;max-width:130px">
+  ${ownerOpts}
+ </select>
  </td>
  <td class="task-due-cell">
  <span class="task-cell-editable" data-action="edit-cell" data-field="dueDate" data-task-id="${task.id}">${dueDateDisplay}</span>${urgency}
@@ -4296,13 +4531,35 @@ function _bindTasksSection(projectId) {
  }
  });
 
- // ── Change delegation (status select + sort select) ──
+ // ── Change delegation (status select, owner select, sort select) ──
  panel.addEventListener('change', function handleTaskChange(e) {
  if (e.target.dataset.action === 'status-change') {
  _saveTaskField(projectId, e.target.dataset.taskId, 'status', e.target.value);
  // Refresh to update row styling (overdue class, done strikethrough)
  _refreshTasksSection(projectId);
  return;
+ }
+ if (e.target.dataset.action === 'owner-change') {
+  const val = e.target.value;
+  const taskId = e.target.dataset.taskId;
+  if (val === '__new__') {
+   // Prompt for a new team member name
+   const newName = prompt('Enter the name of the new team member:');
+   if (!newName || !newName.trim()) { _refreshTasksSection(projectId); return; }
+   const trimmed = newName.trim();
+   // Add to team if not already there
+   const proj = DB.getProject(projectId);
+   const members = proj.teamMembers || [];
+   if (!members.includes(trimmed)) {
+    DB.updateProject(projectId, { teamMembers: [...members, trimmed] });
+    Toast.success(`${trimmed} added to team`);
+   }
+   _saveTaskField(projectId, taskId, 'owner', trimmed);
+  } else {
+   _saveTaskField(projectId, taskId, 'owner', val);
+  }
+  _refreshTasksSection(projectId);
+  return;
  }
  if (e.target.id === 'task-sort-select') {
  AppState.taskSortBy = e.target.value;
@@ -4326,12 +4583,27 @@ function _doAddTask(projectId) {
  if (!panel) return;
  const name = (panel.querySelector('#new-task-name')?.value || '').trim();
  if (!name) { panel.querySelector('#new-task-name')?.focus(); return; }
- const owner = (panel.querySelector('#new-task-owner')?.value || '').trim();
+ let owner = (panel.querySelector('#new-task-owner')?.value || '').trim();
  const due = panel.querySelector('#new-task-due')?.value || '';
  const status = panel.querySelector('#new-task-status')?.value || 'Not Started';
  const notes = (panel.querySelector('#new-task-notes')?.value || '').trim();
 
  const proj = DB.getProject(projectId);
+
+ // Handle "Add new…" option
+ if (owner === '__new__') {
+  const newName = prompt('Enter the name of the new team member:');
+  if (!newName || !newName.trim()) { owner = ''; }
+  else {
+   owner = newName.trim();
+   const members = proj.teamMembers || [];
+   if (!members.includes(owner)) {
+    DB.updateProject(projectId, { teamMembers: [...members, owner] });
+    Toast.success(`${owner} added to team`);
+   }
+  }
+ }
+
  const tasks = [...(proj.tasks||[]), { id: genId(), name, owner, dueDate: due||null, status, notes }];
  DB.updateProject(projectId, { tasks });
  _refreshTasksSection(projectId);
@@ -5394,6 +5666,20 @@ function _bindTeamEdit(projectId) {
  const cancelBtn = document.getElementById('dv-team-cancel-btn');
  if (!tagsEl) return;
 
+ // AM (Account Manager) star click
+ tagsEl.querySelectorAll('.dv-member-tag-am-btn').forEach(btn => {
+ btn.addEventListener('click', e => {
+  e.stopPropagation();
+  const name = btn.dataset.name;
+  const project = DB.getProject(projectId);
+  const newAm = project.accountManager === name ? '' : name; // toggle
+  DB.updateProject(projectId, { accountManager: newAm });
+  document.getElementById('dv-team-field').innerHTML = _buildTeamTagsHtml(project.teamMembers || [], newAm);
+  _bindTeamEdit(projectId);
+  Toast.success(newAm ? `${newAm} set as Account Manager` : 'Account Manager removed');
+ });
+ });
+
  // Remove member on × click
  tagsEl.querySelectorAll('.dv-member-tag-remove').forEach(btn => {
  btn.addEventListener('click', e => {
@@ -5401,16 +5687,19 @@ function _bindTeamEdit(projectId) {
  const idx = Number(btn.dataset.idx);
  const project = DB.getProject(projectId);
  const members = [...(project.teamMembers || [])];
+ const removed = members[idx];
  members.splice(idx, 1);
- DB.updateProject(projectId, { teamMembers: members });
- document.getElementById('dv-team-field').innerHTML = _buildTeamTagsHtml(members);
+ const newAm = project.accountManager === removed ? '' : project.accountManager;
+ DB.updateProject(projectId, { teamMembers: members, accountManager: newAm });
+ document.getElementById('dv-team-field').innerHTML = _buildTeamTagsHtml(members, newAm);
  _bindTeamEdit(projectId);
  Toast.success('Member removed');
  });
  });
 
  // Click tags area → show input
- tagsEl.addEventListener('click', () => {
+ tagsEl.addEventListener('click', e => {
+ if (e.target.closest('.dv-member-tag-remove') || e.target.closest('.dv-member-tag-am-btn')) return;
  if (editRow) editRow.style.display = 'flex';
  if (teamInput) { teamInput.focus(); }
  });
@@ -5424,7 +5713,7 @@ function _bindTeamEdit(projectId) {
  const project = DB.getProject(projectId);
  const members = [...(project.teamMembers || []), name];
  DB.updateProject(projectId, { teamMembers: members });
- document.getElementById('dv-team-field').innerHTML = _buildTeamTagsHtml(members);
+ document.getElementById('dv-team-field').innerHTML = _buildTeamTagsHtml(members, project.accountManager);
  _bindTeamEdit(projectId);
  if (editRow) editRow.style.display = 'none';
  Toast.success(`${name} added to team`);
@@ -5549,7 +5838,13 @@ function renderFilterBar() {
 
  // ── Dashboard action buttons ──
  const hideDoneActive = AppState.hideDone ? ' active' : '';
+ const isListView = AppState.viewMode === 'list';
  actions.innerHTML = `
+ <button class="btn btn-secondary btn-sm view-toggle-btn" id="view-toggle-btn" title="Switch to ${isListView ? 'grid' : 'list'} view">
+  ${isListView
+   ? `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg> Grid`
+   : `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="4" x2="15" y2="4"/><line x1="1" y1="8" x2="15" y2="8"/><line x1="1" y1="12" x2="15" y2="12"/></svg> List`}
+ </button>
  <button class="btn btn-secondary btn-sm toggle-done-btn${hideDoneActive}" id="toggle-done-btn" title="${AppState.hideDone ? 'Show Live & Completed' : 'Hide Live & Completed'}">
  ${AppState.hideDone ? 'Show Completed' : 'Hide Completed'}
  </button>
@@ -5729,6 +6024,15 @@ function bindFilterBarEvents() {
  AppState.hideDone = !AppState.hideDone;
  renderFilterBar();
  renderProjectGrid();
+ });
+ }
+
+ const viewToggleBtn = document.getElementById('view-toggle-btn');
+ if (viewToggleBtn) {
+ viewToggleBtn.addEventListener('click', () => {
+  AppState.viewMode = AppState.viewMode === 'grid' ? 'list' : 'grid';
+  renderFilterBar();   // re-render button with new icon/label
+  renderProjectGrid(); // re-render cards in new mode
  });
  }
 }
