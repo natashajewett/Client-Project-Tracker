@@ -329,7 +329,7 @@
  .progress-fill-not-started { background: var(--status-not-started); }
  .progress-fill-in-discussion { background: var(--status-in-discussion); }
  .progress-fill-in-progress { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
- .progress-fill-launching { background: linear-gradient(90deg, #3b82f6, #fbbf24); }
+ .progress-fill-launching { background: linear-gradient(90deg, #3b82f6, #10b981); }
  .progress-fill-live { background: linear-gradient(90deg, #10b981, #34d399); }
  .progress-fill-completed { background: linear-gradient(90deg, #10b981, #2dd4bf); }
  .progress-fill-paused { background: var(--status-paused); }
@@ -652,83 +652,165 @@
  }
 
  /* ═══════════════════════════════════════════════
- PRINT STYLESHEET (for PDF export)
+ ARCHIVO FONT (uses locally-installed copy)
+ ═══════════════════════════════════════════════ */
+ @font-face { font-family:'Archivo'; font-style:normal; font-weight:400; src:local('Archivo Regular'),local('Archivo-Regular'),local('Archivo'); }
+ @font-face { font-family:'Archivo'; font-style:normal; font-weight:500; src:local('Archivo Medium'),local('Archivo-Medium'); }
+ @font-face { font-family:'Archivo'; font-style:normal; font-weight:600; src:local('Archivo SemiBold'),local('Archivo-SemiBold'); }
+ @font-face { font-family:'Archivo'; font-style:normal; font-weight:700; src:local('Archivo Bold'),local('Archivo-Bold'); }
+ @font-face { font-family:'Archivo'; font-style:normal; font-weight:800; src:local('Archivo ExtraBold'),local('Archivo-ExtraBold'); }
+
+ /* ═══════════════════════════════════════════════
+ PDF ONE-PAGER LAYOUT (hidden; shown only when printing)
+ ═══════════════════════════════════════════════ */
+ #pdf-layout {
+ display: none;
+ }
+
+ /* ═══════════════════════════════════════════════
+ PRINT STYLESHEET — one-pager only
  ═══════════════════════════════════════════════ */
  @media print {
- * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+ * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+ @page { margin: 0; size: letter; }
 
- /* Hide nav, filters, buttons */
- #top-nav, #filter-bar, #dashboard-actions, #toast-container,
- .modal-overlay, .no-print, .btn-print-hide,
- #dv-tabs, .dv-topbar-actions,
- .ms-delete-btn, .note-del-btn, .file-del-btn,
- .task-add-row, .note-compose,
- [data-action="delete-task"], [data-action="ms-delete"] { display: none !important; }
+ /* Hide everything except the pdf-layout */
+ body > *:not(#pdf-layout) { display: none !important; }
+ #pdf-layout { display: block !important; }
 
- button.task-action-btn.danger { display: none !important; }
-
- /* Body resets */
- body {
- background: #ffffff !important;
- color: #111 !important;
- font-size: 11pt;
+ /* Remove shadow/bg from page card for real print */
+ #pdf-layout .pdf-page { box-shadow: none !important; }
  }
 
- /* Show only detail view during print */
- #dashboard-view { display: none !important; }
- #detail-view { display: block !important; padding: 0 !important; }
-
- /* All dv-sections visible for full detail print */
- .dv-section { display: block !important; padding: 0 !important; }
- #dv-panels { padding-top: 0 !important; }
-
- /* Cards */
- .dv-card {
- background: white !important;
- border: 1px solid #ccc !important;
- box-shadow: none !important;
- break-inside: avoid;
- page-break-inside: avoid;
- margin-bottom: 20pt;
+ /* ═══════════════════════════════════════════════
+ PDF ONE-PAGER VISUAL STYLES
+ ═══════════════════════════════════════════════ */
+ #pdf-layout {
+ font-family: 'Archivo', Arial, Helvetica, sans-serif;
+ background: #fff;
  }
-
- /* Status badges */
- .status-badge { background: #eee !important; color: #333 !important; }
-
- /* Progress */
- .progress-bar-fill { print-color-adjust: exact; }
-
- /* Tables */
- .task-table { border-collapse: collapse; width: 100%; }
- .task-table th, .task-table td {
- border: 1px solid #ddd; padding: 4pt 6pt;
- font-size: 9pt; color: #111 !important;
+ #pdf-layout * { box-sizing: border-box; margin: 0; padding: 0; }
+ .pdf-page {
+ width: 816px; min-height: 1056px; background: #fff;
+ display: flex; flex-direction: column;
+ font-family: 'Archivo', Arial, Helvetica, sans-serif;
  }
- .task-table th { background: #f5f5f5 !important; }
-
- /* Section titles */
- .dv-section-title { color: #111 !important; border-color: #ddd !important; }
- .dv-section-title-icon { display: none; }
-
- /* Metric / integration cards */
- .metric-field, .metric-live-card, .integ-row, .ms-pill, .file-row, .note-card {
- background: white !important; border-color: #ccc !important;
+ /* header band */
+ .pdf-header {
+ background: #c20075; padding: 24px 36px 20px;
+ display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
  }
- .metric-field-label, .integ-label, .note-when, .note-author, .file-meta,
- .ms-pill-sub, .tasks-stats { color: #555 !important; }
-
- /* Metrics grid */
- .metrics-grid { grid-template-columns: repeat(3, 1fr); }
- .metrics-live-grid { grid-template-columns: repeat(3, 1fr); }
-
- /* Page settings */
- @page {
- margin: 0.6in 0.75in;
- size: letter;
+ .pdf-header-left { flex: 1; min-width: 0; }
+ .pdf-header-client {
+ font-size: 10px; font-weight: 700; letter-spacing: .12em;
+ text-transform: uppercase; color: rgba(255,255,255,.75); margin-bottom: 6px;
  }
-
- .dv-section-title { break-after: avoid; }
+ .pdf-header-name {
+ font-size: 22px; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: -.02em;
  }
+ .pdf-header-right {
+ flex-shrink: 0; text-align: right;
+ display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+ }
+ .pdf-status-badge {
+ display: inline-flex; align-items: center; gap: 6px;
+ background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.4);
+ color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+ text-transform: uppercase; border-radius: 999px; padding: 4px 12px;
+ }
+ .pdf-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; opacity: .85; }
+ .pdf-big-bet-badge {
+ display: inline-flex; align-items: center; gap: 4px;
+ background: #fde68a; color: #92400e; font-size: 10px; font-weight: 800;
+ letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px;
+ }
+ .pdf-generated { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 4px; }
+ /* metrics strip */
+ .pdf-metrics-strip {
+ display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 2px solid #f0f0f0;
+ }
+ .pdf-metric-cell {
+ padding: 16px 24px; border-right: 1px solid #f0f0f0;
+ }
+ .pdf-metric-cell:last-child { border-right: none; }
+ .pdf-metric-label {
+ font-size: 9px; font-weight: 700; letter-spacing: .1em;
+ text-transform: uppercase; color: #999; margin-bottom: 5px;
+ }
+ .pdf-metric-value {
+ font-size: 18px; font-weight: 800; color: #111; letter-spacing: -.02em; line-height: 1;
+ }
+ .pdf-metric-value.accent { color: #c20075; }
+ .pdf-metric-sub { font-size: 10px; color: #aaa; margin-top: 3px; }
+ .pdf-progress-track {
+ height: 5px; background: #f0f0f0; border-radius: 99px; overflow: hidden; margin-top: 6px;
+ }
+ .pdf-progress-fill { height: 100%; background: #c20075; border-radius: 99px; }
+ .pdf-progress-labels {
+ display: flex; justify-content: space-between; font-size: 9px; color: #bbb; margin-top: 3px;
+ }
+ /* body */
+ .pdf-body { flex: 1; padding: 28px 36px 24px; display: flex; flex-direction: column; gap: 24px; }
+ /* section */
+ .pdf-section-header {
+ display: flex; align-items: center; gap: 10px;
+ margin-bottom: 12px; padding-bottom: 7px; border-bottom: 2px solid #f0f0f0;
+ }
+ .pdf-section-title {
+ font-size: 11px; font-weight: 800; letter-spacing: .1em;
+ text-transform: uppercase; color: #c20075;
+ }
+ .pdf-section-divider { flex: 1; }
+ .pdf-section-count { font-size: 10px; font-weight: 700; color: #ccc; letter-spacing: .04em; }
+ /* task table */
+ .pdf-task-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+ .pdf-task-table thead th {
+ text-align: left; font-size: 9px; font-weight: 700; letter-spacing: .08em;
+ text-transform: uppercase; color: #bbb; padding: 0 8px 8px; border-bottom: 1px solid #eee;
+ }
+ .pdf-task-table thead th:first-child { padding-left: 0; }
+ .pdf-task-table tbody td {
+ padding: 8px; border-bottom: 1px solid #f5f5f5; color: #222; vertical-align: middle;
+ }
+ .pdf-task-table tbody td:first-child { padding-left: 0; }
+ .pdf-task-table tbody tr:last-child td { border-bottom: none; }
+ .pdf-task-check {
+ width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #ddd;
+ display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+ }
+ .pdf-task-check.done {
+ background: #c20075; border-color: #c20075; color: white; font-size: 9px;
+ }
+ .pdf-task-chip {
+ display: inline-flex; align-items: center; gap: 4px;
+ border-radius: 999px; padding: 2px 8px; font-size: 9px; font-weight: 700;
+ letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+ }
+ .pdf-task-chip.not-started { background: #f5f5f5; color: #888; }
+ .pdf-task-chip.in-progress { background: #ede9fe; color: #6d28d9; }
+ .pdf-task-chip.blocked { background: #fff1f0; color: #c0392b; }
+ .pdf-task-chip.done { background: #f0fdf4; color: #15803d; }
+ .pdf-task-overdue { color: #dc2626; font-size: 10px; font-weight: 700; }
+ .pdf-task-due { color: #888; font-size: 10px; }
+ /* notes */
+ .pdf-notes-list { display: flex; flex-direction: column; gap: 10px; }
+ .pdf-note-item {
+ background: #fafafa; border: 1px solid #eee; border-left: 3px solid #c20075;
+ border-radius: 0 6px 6px 0; padding: 10px 14px;
+ }
+ .pdf-note-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+ .pdf-note-author { font-size: 10px; font-weight: 700; color: #111; }
+ .pdf-note-when { font-size: 10px; color: #aaa; }
+ .pdf-note-body { font-size: 11px; color: #444; line-height: 1.55; }
+ /* footer */
+ .pdf-footer {
+ padding: 14px 36px; border-top: 1px solid #f0f0f0;
+ display: flex; align-items: center; justify-content: space-between;
+ background: #fafafa;
+ }
+ .pdf-footer-brand { font-size: 10px; font-weight: 800; color: #c20075; letter-spacing: .06em; text-transform: uppercase; }
+ .pdf-footer-meta { font-size: 10px; color: #bbb; }
+ .pdf-footer-page { font-size: 10px; color: #bbb; }
 
  /* ═══════════════════════════════════════════════
  LOADING STATE (shown until JS initialises)
@@ -1276,7 +1358,74 @@
  .dv-progress-bar-large {
  flex: 1;
  height: 10px;
+ position: relative;
+ overflow: visible !important;
  }
+
+/* Milestone dots on progress bar */
+.milestone-dot-track {
+ position: absolute;
+ top: 0; left: 0; right: 0; bottom: 0;
+ pointer-events: none;
+ z-index: 3;
+}
+.milestone-dot {
+ position: absolute;
+ top: 50%;
+ transform: translate(-50%, -50%);
+ width: 13px;
+ height: 13px;
+ border-radius: 50%;
+ background: var(--bg-page);
+ border: 2.5px solid var(--accent);
+ pointer-events: all;
+ cursor: default;
+ z-index: 4;
+ transition: transform .15s, box-shadow .15s;
+ box-shadow: 0 0 0 2px var(--bg-page);
+}
+.milestone-dot:hover {
+ transform: translate(-50%, -50%) scale(1.35);
+ box-shadow: 0 2px 8px rgba(99,102,241,.35), 0 0 0 2px var(--bg-page);
+}
+.milestone-dot.is-done {
+ background: var(--accent);
+ border-color: var(--accent);
+}
+/* End anchor tooltip — nudge right-aligned so it doesn't overflow the right edge */
+.milestone-dot-anchor-end[data-tip]::after {
+ left: auto;
+ right: 0;
+ transform: none;
+}
+.milestone-dot.is-done:hover {
+ box-shadow: 0 2px 8px rgba(99,102,241,.45), 0 0 0 2px var(--bg-page);
+}
+/* Custom instant tooltip for milestone dots */
+.milestone-dot[data-tip] { overflow: visible; }
+.milestone-dot[data-tip]::after {
+ content: attr(data-tip);
+ position: absolute;
+ bottom: calc(100% + 8px);
+ left: 50%;
+ transform: translateX(-50%);
+ background: var(--bg-overlay, #1e1e2e);
+ color: var(--text-primary, #fff);
+ font-size: 11px;
+ font-weight: 500;
+ line-height: 1.4;
+ white-space: nowrap;
+ padding: 5px 9px;
+ border-radius: 6px;
+ box-shadow: 0 4px 12px rgba(0,0,0,.25);
+ pointer-events: none;
+ opacity: 0;
+ transition: opacity .12s;
+ z-index: 100;
+}
+.milestone-dot[data-tip]:hover::after {
+ opacity: 1;
+}
 
  .dv-progress-input {
  width: 64px;
@@ -1813,7 +1962,7 @@
  transition: border-color .15s;
  }
  .integ-row:hover { border-color: var(--border-strong); }
- .integ-icon { font-size: 20px; flex-shrink:0; }
+ .integ-icon { font-size:9px; font-weight:800; letter-spacing:.04em; flex-shrink:0; width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; background:var(--accent-muted,rgba(194,0,117,.1)); color:var(--accent); border:1px solid var(--accent-border,rgba(194,0,117,.2)); }
  .integ-body { flex:1; min-width:0; }
  .integ-label { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:2px; }
  .integ-val { cursor:pointer; border-radius:3px; padding:2px 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3434,22 +3583,17 @@ function getNextDeadline(project) {
 
  const candidates = [];
 
- // Only incomplete tasks drive the deadline — done tasks are ignored
+ // Only incomplete TASKS drive the overdue indicator — milestones are record-keeping only
  (project.tasks || []).forEach(t => {
  if (t.dueDate && t.status !== 'Done') candidates.push(t.dueDate);
  });
 
- // Only incomplete milestones
- (project.milestones || []).forEach(m => {
- if (m.date && !m.completed) candidates.push(m.date);
- });
-
- // If all tasks and milestones are done, fall back to project target date (no overdue shown)
+ // No tasks with due dates → fall back to target launch date (no overdue shown from milestones)
  if (!candidates.length) {
  return project.targetLaunchDate || null;
  }
 
- // Return the soonest date
+ // Return the soonest upcoming task due date
  return candidates.sort()[0];
 }
 
@@ -4066,8 +4210,8 @@ function _bindDetailViewEvents(projectId) {
  renderProjectGrid();
  });
 
- // PDF export
- document.getElementById('dv-pdf-btn').addEventListener('click', () => window.print());
+ // PDF export — one-pager
+ document.getElementById('dv-pdf-btn').addEventListener('click', () => exportProjectPdf(projectId));
 
  // Delete project (owner only — hidden in viewer mode)
  if (!VIEWER_MODE) {
@@ -4115,6 +4259,61 @@ function _bindDetailViewEvents(projectId) {
 
  // Bind placeholder section buttons for Tasks 6-9
  _bindPlaceholderSections(projectId);
+}
+
+/* ──────────────────────────────────────────────
+ MILESTONE DOTS — positions milestones along the progress bar
+ Always renders start (0%) and end (100%) anchor dots.
+ Intermediate milestone dots are proportionally placed by date.
+────────────────────────────────────────────── */
+function _buildMilestoneDots(project) {
+ // Resolve anchor timestamps — prefer explicit startDate, fall back to createdAt
+ const startDateStr = project.startDate || (project.createdAt ? project.createdAt.slice(0,10) : null);
+ const endDateStr   = project.targetLaunchDate || null;
+ const startTs = startDateStr ? new Date(startDateStr + (startDateStr.length === 10 ? 'T00:00:00' : '')).getTime() : null;
+ const endTs   = endDateStr   ? new Date(endDateStr + 'T00:00:00').getTime() : null;
+ const hasRange = startTs && endTs && endTs > startTs;
+
+ const milestones = (project.milestones || []).filter(m => m.date || m.name);
+
+ // Nothing to show if no dates and no milestones
+ if (!startTs && !endTs && !milestones.length) return '';
+
+ const dots = [];
+
+ // ── Start anchor dot ──
+ if (startTs) {
+  const startLabel = startDateStr ? formatDateShort(startDateStr) : '';
+  dots.push(`<div class="milestone-dot milestone-dot-anchor is-done" style="left:0%" data-tip="${escHtml('Start' + (startLabel ? ': ' + startLabel : ''))}"></div>`);
+ }
+
+ // ── Intermediate milestone dots ──
+ const sorted = [...milestones].sort((a, b) => (a.date||'') < (b.date||'') ? -1 : 1);
+ sorted.forEach((m, i) => {
+  let pct;
+  if (hasRange && m.date) {
+   const mTs = new Date(m.date + 'T00:00:00').getTime();
+   pct = ((mTs - startTs) / (endTs - startTs)) * 100;
+   // Keep away from the anchor dots (4–96%)
+   pct = Math.max(4, Math.min(96, pct));
+  } else {
+   // Even spacing between the anchors when no date context
+   pct = ((i + 1) / (sorted.length + 1)) * 100;
+   pct = Math.max(4, Math.min(96, pct));
+  }
+  const dateStr = m.date ? ` · ${formatDateShort(m.date)}` : '';
+  const doneStr = m.completed ? ' · ✓ Done' : '';
+  const tip = `${m.name || 'Milestone'}${dateStr}${doneStr}`;
+  dots.push(`<div class="milestone-dot${m.completed ? ' is-done' : ''}" style="left:${pct.toFixed(1)}%" data-tip="${escHtml(tip)}"></div>`);
+ });
+
+ // ── End anchor dot ──
+ if (endTs) {
+  const endLabel = endDateStr ? formatDateShort(endDateStr) : '';
+  dots.push(`<div class="milestone-dot milestone-dot-anchor milestone-dot-anchor-end" style="left:100%" data-tip="${escHtml('Target Launch' + (endLabel ? ': ' + endLabel : ''))}"></div>`);
+ }
+
+ return `<div class="milestone-dot-track">${dots.join('')}</div>`;
 }
 
 /* ──────────────────────────────────────────────
@@ -4181,7 +4380,9 @@ function _buildHeaderSection(project) {
  </div>
  <div class="progress-bar-track dv-progress-bar-large">
  <div class="progress-bar-fill progress-fill-${sk}" id="dv-progress-fill" style="width:${progress}%"></div>
+ ${_buildMilestoneDots(project)}
  </div>
+ ${(project.startDate || project.createdAt || project.targetLaunchDate || (project.milestones||[]).length) ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px">● = start / milestone / target · filled = complete · hover for details</div>` : ''}
  ${isPaused ? `<div style="font-size:var(--font-xs);color:var(--status-paused);margin-top:6px">Progress is frozen while this project is Paused. Change the status to resume editing.</div>` : ''}
  </div>
  </div>
@@ -5318,22 +5519,18 @@ function _buildFilesSection(project) {
 
  <!-- ── Upload a File ── -->
  <div class="task-add-box" style="margin-bottom:var(--space-4)">
- <div class="task-add-box-title">⬆ Upload a File</div>
- <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:flex-start">
-  <div style="flex:1;min-width:200px">
-  <label class="file-upload-zone" id="file-upload-zone" for="file-upload-input">
-   <input type="file" id="file-upload-input" accept="*/*" />
-   <div class="file-upload-zone-label" id="file-upload-label">
-    <span style="font-size:28px">📎</span>
-    <strong>Click to choose a file</strong>
-    <span>or drag and drop · PDF, images, docs, etc.</span>
-    <span style="font-size:10px;color:var(--text-disabled)">Max 4 MB — large files may slow down storage</span>
-   </div>
-  </label>
+ <div class="task-add-box-title">Upload a File</div>
+ <input type="file" id="file-upload-input" accept="*/*" style="display:none" />
+ <div id="file-upload-idle" style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
+  <button type="button" class="btn btn-secondary btn-sm" id="file-upload-trigger-btn">Choose File…</button>
+  <span style="font-size:var(--font-xs);color:var(--text-muted)">PDF, images, Word docs, etc. · Max 4 MB</span>
+ </div>
+ <div id="file-upload-preview" style="display:none">
+  <div style="display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap">
+  <div>
+   <div style="font-size:var(--font-sm);font-weight:600;color:var(--text-primary)" id="file-upload-fname"></div>
+   <div style="font-size:11px;color:var(--text-muted);margin-top:2px" id="file-upload-fmeta"></div>
   </div>
-  <div id="file-upload-preview" style="display:none;flex:1;min-width:200px">
-  <div style="font-size:var(--font-sm);font-weight:600;color:var(--text-primary);margin-bottom:4px" id="file-upload-fname"></div>
-  <div style="font-size:11px;color:var(--text-muted);margin-bottom:var(--space-2)" id="file-upload-fmeta"></div>
   <div style="display:flex;gap:var(--space-2)">
    <button class="btn btn-primary btn-sm" data-action="file-upload-confirm">Save File</button>
    <button class="btn btn-secondary btn-sm" data-action="file-upload-cancel">Cancel</button>
@@ -5367,10 +5564,10 @@ function _bindFilesSection(projectId) {
   _pendingUploadData = null;
   const inp = panel.querySelector('#file-upload-input');
   const prev = panel.querySelector('#file-upload-preview');
-  const zone = panel.querySelector('#file-upload-zone');
+  const idle = panel.querySelector('#file-upload-idle');
   if (inp) inp.value = '';
   if (prev) prev.style.display = 'none';
-  if (zone) zone.style.display = '';
+  if (idle) idle.style.display = '';
  }
 
  // ── URL input → auto-detect type ──
@@ -5406,7 +5603,8 @@ function _bindFilesSection(projectId) {
 
  // ── File upload input ──
  const fileInput = panel.querySelector('#file-upload-input');
- const uploadZone = panel.querySelector('#file-upload-zone');
+ const triggerBtn = panel.querySelector('#file-upload-trigger-btn');
+ if (triggerBtn) triggerBtn.addEventListener('click', () => fileInput && fileInput.click());
 
  function handleFileSelected(file) {
   if (!file) return;
@@ -5420,11 +5618,12 @@ function _bindFilesSection(projectId) {
   reader.onload = (ev) => {
    _pendingUploadData = ev.target.result;
    const prev = panel.querySelector('#file-upload-preview');
+   const idle = panel.querySelector('#file-upload-idle');
    const fname = panel.querySelector('#file-upload-fname');
    const fmeta = panel.querySelector('#file-upload-fmeta');
    const type = detectFileType(null, file.type);
    if (prev) prev.style.display = '';
-   if (uploadZone) uploadZone.style.display = 'none';
+   if (idle) idle.style.display = 'none';
    if (fname) fname.textContent = file.name;
    if (fmeta) fmeta.textContent = `${MB < 1 ? (file.size/1024).toFixed(0)+' KB' : MB.toFixed(2)+' MB'} · ${type.toUpperCase()}`;
   };
@@ -5433,18 +5632,6 @@ function _bindFilesSection(projectId) {
 
  if (fileInput) {
   fileInput.addEventListener('change', () => handleFileSelected(fileInput.files[0]));
- }
-
- // Drag-and-drop onto upload zone
- if (uploadZone) {
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-  uploadZone.addEventListener('drop', e => {
-   e.preventDefault();
-   uploadZone.classList.remove('drag-over');
-   const file = e.dataTransfer?.files[0];
-   if (file) handleFileSelected(file);
-  });
  }
 
  // ── Click delegation ──
@@ -5705,12 +5892,12 @@ function _buildIntegrationsSection(project) {
  <div class="dv-card" id="integrations-panel">
  <div class="dv-section-title" style="margin-bottom:var(--space-5)">Integrations & Links</div>
  <div class="integ-list">
- ${linkRow('HubSpot Deal', '🟠', 'hubspotUrl', 'HubSpot deal URL')}
- ${linkRow('Google Drive', '📁', 'driveUrl', 'Drive folder URL')}
- ${linkRow('Google Client Chat', '💬', 'googleChatUrl', 'Google Chat space URL')}
- ${linkRow('Slack Channel', '💜', 'slackUrl', 'Slack channel URL')}
- ${linkRow('Email Thread', '📧', 'emailThreadUrl', 'Email thread URL')}
- ${linkRow('Last Contact Date', '📅', 'lastContactDate', 'YYYY-MM-DD')}
+ ${linkRow('HubSpot Deal', 'HS', 'hubspotUrl', 'HubSpot deal URL')}
+ ${linkRow('Google Drive', 'GD', 'driveUrl', 'Drive folder URL')}
+ ${linkRow('Google Client Chat', 'GC', 'googleChatUrl', 'Google Chat space URL')}
+ ${linkRow('Slack Channel', 'SL', 'slackUrl', 'Slack channel URL')}
+ ${linkRow('Email Thread', 'EM', 'emailThreadUrl', 'Email thread URL')}
+ ${linkRow('Last Contact Date', 'LC', 'lastContactDate', 'YYYY-MM-DD')}
  </div>
  <div style="font-size:11px;color:var(--text-muted);margin-top:var(--space-4)">Click any field to edit · Links open in a new tab</div>
  </div>
@@ -6731,6 +6918,198 @@ window.addEventListener('afterprint', function() {
 });
 
 document.addEventListener('DOMContentLoaded', initApp);
+
+/* ──────────────────────────────────────────────
+   PDF ONE-PAGER EXPORT
+────────────────────────────────────────────── */
+function _buildPdfLayout(project) {
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+
+  // Progress
+  const tasks = project.tasks || [];
+  const doneTasks = tasks.filter(t => t.status === 'Done').length;
+  const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
+
+  // Target launch display
+  let launchDisplay = 'TBD';
+  let launchSub = '';
+  if (project.targetLaunchDate) {
+    const d = new Date(project.targetLaunchDate + 'T00:00:00');
+    launchDisplay = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const diffDays = Math.round((d - today) / 86400000);
+    if (diffDays > 0) launchSub = `${diffDays} days away`;
+    else if (diffDays === 0) launchSub = 'Today';
+    else launchSub = `${Math.abs(diffDays)} days ago`;
+  }
+
+  // Account manager
+  const amMember = (project.teamMembers || []).find(m => m.isAccountManager);
+  const amName = amMember ? amMember.name : '—';
+  const ownerName = project.owner || CURRENT_USER || '—';
+
+  // Value
+  const valueStr = project.pipelineValue
+    ? '$' + Number(project.pipelineValue).toLocaleString()
+    : '—';
+
+  // Status
+  const statusLabel = project.status || 'In Progress';
+
+  // Big Bet badge
+  const bigBetHtml = project.isBigBet
+    ? `<div class="pdf-big-bet-badge">&#9733; Big Bet</div>`
+    : '';
+
+  // Tasks — incomplete first, up to 8
+  const incomplete = tasks.filter(t => t.status !== 'Done');
+  const complete = tasks.filter(t => t.status === 'Done');
+  const taskList = [...incomplete, ...complete].slice(0, 8);
+  const taskCountNote = tasks.length > 8
+    ? `${Math.min(8, tasks.length)} of ${tasks.length} shown · incomplete first`
+    : `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+
+  function taskChipClass(status) {
+    if (status === 'Done') return 'done';
+    if (status === 'In Progress') return 'in-progress';
+    if (status === 'Blocked') return 'blocked';
+    return 'not-started';
+  }
+  function taskChipLabel(status) {
+    if (status === 'In Progress') return 'In Progress';
+    return status || 'Not Started';
+  }
+
+  const taskRows = taskList.map(t => {
+    const isDone = t.status === 'Done';
+    const checkHtml = isDone
+      ? `<div class="pdf-task-check done">&#10003;</div>`
+      : `<div class="pdf-task-check"></div>`;
+    let dueHtml = '';
+    if (t.dueDate) {
+      const dueD = new Date(t.dueDate + 'T00:00:00');
+      const overdue = !isDone && dueD < today;
+      const dueLabel = dueD.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      dueHtml = overdue
+        ? `<span class="pdf-task-overdue">${escHtml(dueLabel)}</span>`
+        : `<span class="pdf-task-due">${escHtml(dueLabel)}</span>`;
+    }
+    return `<tr>
+      <td>${checkHtml}</td>
+      <td>${escHtml(t.title || '')}</td>
+      <td style="color:#888;font-size:10px">${escHtml(t.owner || '')}</td>
+      <td>${dueHtml}</td>
+      <td><span class="pdf-task-chip ${taskChipClass(t.status)}">${taskChipLabel(t.status)}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Notes — last 3
+  const notes = [...(project.notes || [])].sort((a, b) => (b.timestamp||'') > (a.timestamp||'') ? 1 : -1).slice(0, 3).reverse();
+  const noteCountNote = (project.notes||[]).length > 3
+    ? `${Math.min(3,(project.notes||[]).length)} of ${(project.notes||[]).length} shown · most recent`
+    : `${notes.length} note${notes.length !== 1 ? 's' : ''}`;
+
+  const noteItems = notes.map(n => {
+    const when = n.timestamp ? new Date(n.timestamp).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '';
+    return `<div class="pdf-note-item">
+      <div class="pdf-note-meta">
+        <span class="pdf-note-author">${escHtml(n.author || '')}</span>
+        <span class="pdf-note-when">${escHtml(when)}</span>
+      </div>
+      <div class="pdf-note-body">${escHtml(n.text || '')}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="pdf-page">
+    <div class="pdf-header">
+      <div class="pdf-header-left">
+        <div class="pdf-header-client">${escHtml(project.clientName || '')}</div>
+        <div class="pdf-header-name">${escHtml(project.projectName || 'Untitled Project')}</div>
+      </div>
+      <div class="pdf-header-right">
+        <div class="pdf-status-badge"><span class="pdf-status-dot"></span>${escHtml(statusLabel)}</div>
+        ${bigBetHtml}
+        <div class="pdf-generated">Generated ${todayStr}</div>
+      </div>
+    </div>
+
+    <div class="pdf-metrics-strip">
+      <div class="pdf-metric-cell">
+        <div class="pdf-metric-label">Project Value</div>
+        <div class="pdf-metric-value accent">${escHtml(valueStr)}</div>
+        <div class="pdf-metric-sub">Contract value</div>
+      </div>
+      <div class="pdf-metric-cell">
+        <div class="pdf-metric-label">Progress</div>
+        <div class="pdf-metric-value">${progress}%</div>
+        <div class="pdf-progress-track"><div class="pdf-progress-fill" style="width:${progress}%"></div></div>
+        <div class="pdf-progress-labels"><span>0%</span><span>100%</span></div>
+      </div>
+      <div class="pdf-metric-cell">
+        <div class="pdf-metric-label">Target Launch</div>
+        <div class="pdf-metric-value" style="font-size:15px">${escHtml(launchDisplay)}</div>
+        ${launchSub ? `<div class="pdf-metric-sub">${escHtml(launchSub)}</div>` : ''}
+      </div>
+      <div class="pdf-metric-cell">
+        <div class="pdf-metric-label">Account Manager</div>
+        <div class="pdf-metric-value" style="font-size:14px">${escHtml(amName)}</div>
+        <div class="pdf-metric-sub">${escHtml(ownerName)} &middot; owner</div>
+      </div>
+    </div>
+
+    <div class="pdf-body">
+      ${tasks.length ? `
+      <div>
+        <div class="pdf-section-header">
+          <span class="pdf-section-title">Tasks</span>
+          <span class="pdf-section-divider"></span>
+          <span class="pdf-section-count">${taskCountNote}</span>
+        </div>
+        <table class="pdf-task-table">
+          <thead><tr>
+            <th style="width:18px"></th>
+            <th>Task</th>
+            <th>Owner</th>
+            <th>Due</th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody>${taskRows}</tbody>
+        </table>
+      </div>` : ''}
+
+      ${notes.length ? `
+      <div>
+        <div class="pdf-section-header">
+          <span class="pdf-section-title">Notes</span>
+          <span class="pdf-section-divider"></span>
+          <span class="pdf-section-count">${noteCountNote}</span>
+        </div>
+        <div class="pdf-notes-list">${noteItems}</div>
+      </div>` : ''}
+    </div>
+
+    <div class="pdf-footer">
+      <div class="pdf-footer-brand">Client Project Tracker</div>
+      <div class="pdf-footer-meta">${escHtml(project.clientName || '')} &bull; ${escHtml(project.projectName || '')}</div>
+      <div class="pdf-footer-page">Page 1</div>
+    </div>
+  </div>`;
+}
+
+function exportProjectPdf(projectId) {
+  const project = DB.getProject(projectId);
+  if (!project) return;
+  let layout = document.getElementById('pdf-layout');
+  if (!layout) {
+    layout = document.createElement('div');
+    layout.id = 'pdf-layout';
+    document.body.appendChild(layout);
+  }
+  layout.innerHTML = _buildPdfLayout(project);
+  window.print();
+}
 </script>
+<!-- PDF layout container (populated dynamically before print) -->
+<div id="pdf-layout"></div>
 </body>
 </html>

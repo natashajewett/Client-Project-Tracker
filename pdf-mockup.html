@@ -4,15 +4,43 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PDF Export Mockup — Project One-Pager</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 <style>
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Archivo Regular'), local('Archivo-Regular'), local('Archivo');
+  }
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Archivo Medium'), local('Archivo-Medium');
+  }
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 600;
+    src: local('Archivo SemiBold'), local('Archivo-SemiBold');
+  }
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Archivo Bold'), local('Archivo-Bold');
+  }
+  @font-face {
+    font-family: 'Archivo';
+    font-style: normal;
+    font-weight: 800;
+    src: local('Archivo ExtraBold'), local('Archivo-ExtraBold');
+  }
+
   /* ── Page simulation ── */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: #e8e8e8;
-    font-family: 'Archivo', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: 'Archivo', Arial, Helvetica, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -40,7 +68,7 @@
     flex-direction: column;
     position: relative;
     overflow: hidden;
-    font-family: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Archivo', Arial, Helvetica, sans-serif;
   }
 
   /* ── HEADER BAND ── */
