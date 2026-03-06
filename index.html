@@ -7505,6 +7505,30 @@ function exportDashboardPdf() {
   const statusSub = AppState.filterStatus ? ` · ${AppState.filterStatus}` : '';
   const amSub = amLabel ? ` · ${amLabel}` : '';
 
+  // Build filter context pills for the PDF banner
+  const filterParts = [];
+  if (AppState.filterClients.length > 0) {
+    const names = AppState.filterClients.map(id => { const c = DB.getClient(id); return c ? c.name : null; }).filter(Boolean);
+    if (names.length) filterParts.push({ label: 'Partners: ' + names.join(', '), cls: 'partners' });
+  }
+  if (AppState.filterStatus) filterParts.push({ label: 'Status: ' + AppState.filterStatus, cls: '' });
+  if (AppState.filterAccountManager) filterParts.push({ label: 'Account Manager: ' + AppState.filterAccountManager, cls: '' });
+  if (AppState.filterMinValue !== '' || AppState.filterMaxValue !== '') {
+    const mn = AppState.filterMinValue !== '' ? '$' + Number(AppState.filterMinValue).toLocaleString() : '';
+    const mx = AppState.filterMaxValue !== '' ? '$' + Number(AppState.filterMaxValue).toLocaleString() : '';
+    filterParts.push({ label: mn && mx ? `Value: ${mn} – ${mx}` : mn ? `Value: ≥ ${mn}` : `Value: ≤ ${mx}`, cls: '' });
+  }
+  if (AppState.filterDeadlineFrom || AppState.filterDeadlineTo) {
+    const df = AppState.filterDeadlineFrom ? formatDateShort(AppState.filterDeadlineFrom) : '';
+    const dt = AppState.filterDeadlineTo   ? formatDateShort(AppState.filterDeadlineTo)   : '';
+    filterParts.push({ label: df && dt ? `Deadline: ${df} – ${dt}` : df ? `Deadline: from ${df}` : `Deadline: until ${dt}`, cls: '' });
+  }
+  if (AppState.filterBigBet) filterParts.push({ label: 'Big Bets only', cls: '' });
+  if (AppState.searchQuery) filterParts.push({ label: `Search: "${AppState.searchQuery}"`, cls: '' });
+  const filterNoteHtml = filterParts.length > 0
+    ? `<div class="pdf-filter-note"><span class="pdf-filter-label">Filtered view</span><div class="pdf-filter-pills">${filterParts.map(f => `<span class="pdf-filter-pill ${f.cls}">${escHtml(f.label)}</span>`).join('')}</div></div>`
+    : '';
+
   const headerRightHtml = `
     ${amLabel ? `<div class="pdf-status-badge"><span class="pdf-status-dot"></span>${escHtml(amLabel)}</div>` : ''}
     <div class="pdf-generated">Generated ${todayStr}</div>`;
@@ -7551,7 +7575,7 @@ body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display
 .pdf-section-count{font-size:9px;font-weight:700;color:#ccc;letter-spacing:.04em}
 .pdf-db-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 /* Dashboard-style project card */
-.dbc{border:1px solid #e5e7eb;border-left:3px solid #ccc;border-radius:8px;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.dbc{border:1px solid #e5e7eb;border-left:3px solid #ccc;border-radius:8px;background:#fff;display:flex;flex-direction:column;overflow:hidden;min-height:160px}
 .dbc-empty{border:1px dashed #efefef;border-radius:8px;background:#fafafa;min-height:80px}
 .dbc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;padding:10px 12px 6px}
 .dbc-client{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;line-height:1.3;flex:1;min-width:0}
@@ -7582,6 +7606,12 @@ body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display
 .pdf-footer-brand{font-size:10px;font-weight:800;color:#c20075;letter-spacing:.06em;text-transform:uppercase}
 .pdf-footer-meta{font-size:10px;color:#bbb}
 .pdf-footer-page{font-size:10px;color:#bbb}
+/* Filter context banner */
+.pdf-filter-note{padding:8px 28px;background:#fff8fc;border-bottom:2px solid #fce7f3;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pdf-filter-label{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#c20075;flex-shrink:0;white-space:nowrap}
+.pdf-filter-pills{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.pdf-filter-pill{font-size:9px;font-weight:600;color:#374151;background:#f3f4f6;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.pdf-filter-pill.partners{background:#fce7f3;color:#9d174d}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{margin:0;size:letter}
@@ -7611,6 +7641,7 @@ body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display
       <div class="pdf-metric-sub">${AppState.filterStatus ? escHtml(AppState.filterStatus) : 'all statuses'}${amLabel ? ' · ' + escHtml(amLabel) : ''}</div>
     </div>
   </div>
+  ${filterNoteHtml}
   <div class="pdf-db-body">
     ${sec1Html || ''}
     ${sec2Html || ''}
