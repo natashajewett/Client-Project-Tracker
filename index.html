@@ -3825,9 +3825,7 @@ function teamAvatarsHtml(members, max = 3) {
 function projectCardHtml(project) {
  const sk = statusKey(project.status);
  const isPaused = project.status === 'Paused';
- const progress = isPaused
- ? (project.pausedProgress ?? project.progress ?? 0)
- : (project.progress ?? 0);
+ const progress = getMilestoneProgress(project);
 
  const nextDeadline = getNextDeadline(project);
  const deadlineDays = nextDeadline ? daysUntil(nextDeadline) : null;
@@ -3906,9 +3904,7 @@ function projectCardHtml(project) {
 function projectListItemHtml(project) {
  const sk = statusKey(project.status);
  const isPaused = project.status === 'Paused';
- const progress = isPaused
-  ? (project.pausedProgress ?? project.progress ?? 0)
-  : (project.progress ?? 0);
+ const progress = getMilestoneProgress(project);
 
  const nd = getNextDeadline(project);
  let deadlineDisplay = nd ? formatDateShort(nd) : '—';
@@ -4018,9 +4014,7 @@ function openQuickModal(projectId) {
 function _renderQuickModal(project) {
  const sk = statusKey(project.status);
  const isPaused = project.status === 'Paused';
- const progress = isPaused
- ? (project.pausedProgress ?? project.progress ?? 0)
- : (project.progress ?? 0);
+ const progress = getMilestoneProgress(project);
  const color = STATUS_COLORS[project.status] || '#6b7280';
 
  // ── Hero gradient strip (status colour) ──
@@ -4406,6 +4400,20 @@ function _getLastCompletedMilestonePct(project) {
  return Math.max(0, Math.min(100, pct));
 }
 
+// Primary progress function — milestone-driven.
+// Bar fills to where the last completed dot sits on the timeline.
+// Falls back to completed/total count if dates aren't available.
+function getMilestoneProgress(project) {
+ const milestones = project.milestones || [];
+ if (!milestones.length) return 0;
+ // Date-position approach (matches visual dot positions on the bar)
+ const posPct = _getLastCompletedMilestonePct(project);
+ if (posPct > 0) return Math.round(posPct);
+ // Fallback: count-based when start/end dates aren't configured
+ const done = milestones.filter(m => m.completed).length;
+ return Math.round((done / milestones.length) * 100);
+}
+
 /* ──────────────────────────────────────────────
  MILESTONE DOTS — positions milestones along the progress bar
  Always renders start (0%) and end (100%) anchor dots.
@@ -4466,12 +4474,10 @@ function _buildMilestoneDots(project) {
 ────────────────────────────────────────────── */
 function _buildHeaderSection(project) {
  const isPaused = project.status === 'Paused';
- const progress = isPaused
- ? (project.pausedProgress ?? project.progress ?? 0)
- : (project.progress ?? 0);
  const sk = statusKey(project.status);
- // Bar fills to at least the position of the last completed milestone
- const barWidth = Math.max(progress, _getLastCompletedMilestonePct(project));
+ // Progress is fully driven by milestone completion (dot position = bar fill)
+ const progress = getMilestoneProgress(project);
+ const barWidth = progress;
 
  const lastUpdated = project.lastUpdated
  ? new Date(project.lastUpdated).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})
@@ -4508,21 +4514,13 @@ function _buildHeaderSection(project) {
  </div>
  </div>
 
- <!-- Progress bar (editable %) -->
+ <!-- Progress bar — auto-calculated from milestones -->
  <div>
  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
- <span class="dv-field-label">${isPaused ? '⏸ Progress — Frozen at' : 'Overall Progress'}</span>
- <div class="dv-progress-wrap" style="gap:var(--space-2)">
- <input type="range" min="0" max="100" value="${progress}"
- id="dv-progress-range"
- ${isPaused ? 'disabled' : ''}
- style="width:120px;accent-color:${STATUS_COLORS[project.status]};cursor:${isPaused?'not-allowed':'pointer'}" />
- <input type="number" min="0" max="100" value="${progress}"
- id="dv-progress-number"
- ${isPaused ? 'disabled' : ''}
- class="input input-sm dv-progress-input"
- style="width:58px;text-align:center" />
- <span style="color:var(--text-muted);font-size:var(--font-sm)">%</span>
+ <span class="dv-field-label">${isPaused ? '⏸ Overall Progress — Paused' : 'Overall Progress'}</span>
+ <div style="display:flex;align-items:center;gap:8px">
+ <span style="font-size:11px;color:var(--text-muted);font-style:italic">auto · from milestones</span>
+ <span style="font-size:14px;font-weight:700;color:var(--text-primary)">${barWidth}%</span>
  </div>
  </div>
  <div class="progress-bar-track dv-progress-bar-large">
@@ -4530,7 +4528,7 @@ function _buildHeaderSection(project) {
  ${_buildMilestoneDots(project)}
  </div>
  ${(project.startDate || project.createdAt || project.targetLaunchDate || (project.milestones||[]).length) ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px">● = start / milestone / target · filled = complete · hover for details</div>` : ''}
- ${isPaused ? `<div style="font-size:var(--font-xs);color:var(--status-paused);margin-top:6px">Progress is frozen while this project is Paused. Change the status to resume editing.</div>` : ''}
+ ${isPaused ? `<div style="font-size:var(--font-xs);color:var(--status-paused);margin-top:6px">Progress is paused. Complete milestones to advance the bar.</div>` : ''}
  </div>
  </div>
 
@@ -6142,35 +6140,7 @@ function _bindInlineEdits(projectId) {
  });
  }
 
- /* ── Progress range + number (synced) ── */
- const progressRange = document.getElementById('dv-progress-range');
- const progressNumber = document.getElementById('dv-progress-number');
- const progressFill = document.getElementById('dv-progress-fill');
-
- if (progressRange && progressNumber) {
- const syncProgress = (val) => {
- const v = Math.min(100, Math.max(0, Number(val) || 0));
- progressRange.value = v;
- progressNumber.value = v;
- if (progressFill) progressFill.style.width = v + '%';
- };
-
- progressRange.addEventListener('input', e => syncProgress(e.target.value));
-
- progressNumber.addEventListener('input', e => syncProgress(e.target.value));
-
- const saveProgress = () => {
- const v = Number(progressNumber.value) || 0;
- DB.updateProject(projectId, { progress: v });
- Toast.success('Progress saved');
- };
-
- progressRange.addEventListener('change', saveProgress);
- progressNumber.addEventListener('change', saveProgress);
- progressNumber.addEventListener('keydown', e => {
- if (e.key === 'Enter') { saveProgress(); e.target.blur(); }
- });
- }
+ /* Progress is now auto-calculated from milestones — no manual input needed */
 
  /* ── Generic click-to-edit fields (scoped to header only to avoid task cell conflicts) ── */
  const headerSection = document.getElementById('dv-section-header');
@@ -6840,11 +6810,6 @@ function openAddProjectModal(prefillClientId = '') {
  </div>
 
  <div class="form-group">
- <label class="form-label" for="np-progress">Initial Progress (%)</label>
- <input id="np-progress" class="input" type="number" min="0" max="100" value="0" placeholder="0" />
- </div>
-
- <div class="form-group">
  <label class="form-label" for="np-team">Team Members</label>
  <input id="np-team" class="input" type="text" placeholder="Names separated by commas" />
  <div class="form-hint">e.g. Natasha J., Marcus L.</div>
@@ -6864,7 +6829,6 @@ function openAddProjectModal(prefillClientId = '') {
  const value = document.getElementById('np-value').value;
  const startDate = document.getElementById('np-start').value;
  const launchDate = document.getElementById('np-launch').value;
- const progress = Math.min(100, Math.max(0, Number(document.getElementById('np-progress').value) || 0));
  const teamRaw = document.getElementById('np-team').value;
  const errorEl = document.getElementById('np-error');
 
@@ -6890,8 +6854,8 @@ function openAddProjectModal(prefillClientId = '') {
  value: value ? Number(value) : null,
  startDate: startDate || null,
  targetLaunchDate: launchDate || null,
- progress,
- pausedProgress: status === 'Paused' ? progress : null,
+ progress: 0,
+ pausedProgress: null,
  teamMembers,
  tasks: [],
  milestones: [],
@@ -7174,10 +7138,9 @@ function _buildPdfLayout(project) {
   const today = new Date();
   const todayStr = today.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 
-  // Progress
+  // Progress — milestone-driven (matches the dashboard bar)
   const tasks = project.tasks || [];
-  const doneTasks = tasks.filter(t => t.status === 'Done').length;
-  const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
+  const progress = getMilestoneProgress(project);
 
   // Target launch display
   let launchDisplay = 'TBD';
@@ -7355,7 +7318,7 @@ function exportDashboardPdf() {
     return;
   }
 
-  // Determine header title
+  // Header title
   let headerTitle = 'All Projects';
   if (AppState.filterClients.length === 1) {
     const c = DB.getClient(AppState.filterClients[0]);
@@ -7363,87 +7326,116 @@ function exportDashboardPdf() {
   }
   const amLabel = AppState.filterAccountManager || '';
 
-  // Helper: compute task-based progress %
-  function projProgress(p) {
-    const tasks = p.tasks || [];
-    const done = tasks.filter(t => t.status === 'Done').length;
-    return tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  // Progress driven by milestones (matches the dashboard bar)
+  function projProgress(p) { return getMilestoneProgress(p); }
+
+  // Status colour map (matches the app's CSS variables)
+  function statusColors(status) {
+    const map = {
+      'Planning':      { color: '#6b7280', bg: 'rgba(107,114,128,.12)', bar: '#6b7280' },
+      'Not Started':   { color: '#6b7280', bg: 'rgba(107,114,128,.12)', bar: '#6b7280' },
+      'In Discussion': { color: '#f59e0b', bg: 'rgba(245,158,11,.12)',  bar: '#f59e0b' },
+      'In Progress':   { color: '#8b5cf6', bg: 'rgba(139,92,246,.12)',  bar: 'linear-gradient(90deg,#6366f1,#8b5cf6)' },
+      'Launching':     { color: '#3b82f6', bg: 'rgba(59,130,246,.12)',  bar: 'linear-gradient(90deg,#3b82f6,#10b981)' },
+      'Live':          { color: '#10b981', bg: 'rgba(16,185,129,.12)',  bar: 'linear-gradient(90deg,#10b981,#34d399)' },
+      'Completed':     { color: '#10b981', bg: 'rgba(16,185,129,.12)',  bar: 'linear-gradient(90deg,#10b981,#2dd4bf)' },
+      'Paused':        { color: '#eab308', bg: 'rgba(234,179,8,.12)',   bar: '#eab308' },
+      'On Hold':       { color: '#eab308', bg: 'rgba(234,179,8,.12)',   bar: '#eab308' },
+    };
+    return map[status] || { color: '#6b7280', bg: 'rgba(107,114,128,.12)', bar: '#6b7280' };
   }
 
-  // Section 1: top 3 by value descending
-  const byValue = [...allFiltered].sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
-  const sec1 = byValue.slice(0, 3);
-  const sec1Ids = new Set(sec1.map(p => p.id));
+  // Next deadline display (same logic as the dashboard)
+  function deadlineInfo(p) {
+    const candidates = [];
+    (p.tasks || []).forEach(t => { if (t.dueDate && t.status !== 'Done') candidates.push(t.dueDate); });
+    const nd = candidates.length ? candidates.sort()[0] : (p.targetLaunchDate || null);
+    if (!nd) return { label: '—', cls: '' };
+    const d = new Date(nd + 'T00:00:00');
+    const diff = Math.round((d - today) / 86400000);
+    const hasIncomplete = candidates.length > 0;
+    let label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    let cls = '';
+    if (hasIncomplete) {
+      if (diff < 0)      { label = `${label} · ${Math.abs(diff)}d overdue`; cls = 'overdue'; }
+      else if (diff === 0) { label = 'Due today'; cls = 'soon'; }
+      else if (diff === 1) { label = 'Due tomorrow'; cls = 'soon'; }
+      else if (diff <= 7)  { label = `${label} · ${diff}d`; cls = 'soon'; }
+    }
+    return { label, cls };
+  }
 
-  // Section 2: top 3 by progress descending, no overlap with sec1
-  const remaining1 = allFiltered.filter(p => !sec1Ids.has(p.id));
-  const byProgress = [...remaining1].sort((a, b) => projProgress(b) - projProgress(a));
-  const sec2 = byProgress.slice(0, 3);
-  const sec2Ids = new Set(sec2.map(p => p.id));
+  // Next incomplete milestone
+  function nextMilestone(p) {
+    const todayStr2 = today.toISOString().slice(0, 10);
+    const upcoming = (p.milestones || [])
+      .filter(m => !m.completed && m.date)
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+    return upcoming[0] || null;
+  }
 
-  // Section 3: top 3 by createdAt descending, no overlap with sec1 or sec2
-  const remaining2 = allFiltered.filter(p => !sec1Ids.has(p.id) && !sec2Ids.has(p.id));
-  const byCreated = [...remaining2].sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : -1));
-  const sec3 = byCreated.slice(0, 3);
-
-  // Build a compact project card
+  // Build a project card that matches the dashboard card layout
   function buildCard(p) {
     const pct = projProgress(p);
+    const sc = statusColors(p.status || 'Planning');
     const valueStr = p.value ? '$' + Number(p.value).toLocaleString() : '—';
-    const am = (p.teamMembers || []).find(m => m.isAccountManager);
-    const amName = am ? am.name : '—';
-    let launchStr = '—';
-    if (p.targetLaunchDate) {
-      const d = new Date(p.targetLaunchDate + 'T00:00:00');
-      launchStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dl = deadlineInfo(p);
+    const ms = nextMilestone(p);
+    const bigBetHtml = p.isBigBet
+      ? `<span style="display:inline-flex;align-items:center;background:#fde68a;color:#92400e;font-size:8px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:2px 7px;margin-right:4px;">&#9733; Big Bet</span>`
+      : '';
+
+    // Milestone label
+    let msHtml = '';
+    if (ms) {
+      const msDate = new Date(ms.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      msHtml = `<div class="dbc-milestone">
+        <div class="dbc-milestone-label">Next Milestone</div>
+        <div class="dbc-milestone-row">
+          <span class="dbc-milestone-name">${escHtml(ms.name || 'Milestone')}</span>
+          <span class="dbc-milestone-date">${escHtml(msDate)}</span>
+        </div>
+      </div>`;
+    } else {
+      msHtml = `<div class="dbc-milestone">
+        <div class="dbc-milestone-label">Next Milestone</div>
+        <div class="dbc-milestone-none">No upcoming milestones</div>
+      </div>`;
     }
-    const statusLabel = p.status || 'In Progress';
-    const statusDotColors = {
-      'Planning': '#6b7280', 'In Progress': '#3b82f6', 'On Hold': '#f59e0b',
-      'Launching': '#10b981', 'Launched': '#10b981', 'Done': '#9ca3af'
-    };
-    const dotColor = statusDotColors[statusLabel] || '#6b7280';
-    const bigBetHtml = p.isBigBet ? `<span class="pdf-db-bigbet">&#9733; Big Bet</span>` : '';
-    return `<div class="pdf-db-card">
-      <div class="pdf-db-card-top">
-        <div class="pdf-db-card-name">${escHtml(p.projectName || 'Untitled')}</div>
-        <div class="pdf-db-card-client">${escHtml(p.clientName || '')}</div>
-        <div class="pdf-db-card-meta">
-          <span class="pdf-db-status-chip">
-            <span class="pdf-db-status-dot" style="background:${dotColor}"></span>
-            ${escHtml(statusLabel)}
-          </span>
+
+    return `<div class="dbc" style="border-left-color:${sc.color}">
+      <div class="dbc-top">
+        <div class="dbc-client">${escHtml(p.clientName || '')}</div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
           ${bigBetHtml}
+          <span class="dbc-status-badge" style="color:${sc.color};background:${sc.bg}">${escHtml(p.status || 'Planning')}</span>
         </div>
       </div>
-      <div class="pdf-db-metrics">
-        <div class="pdf-db-metric">
-          <div class="pdf-db-ml">Value</div>
-          <div class="pdf-db-mv accent">${escHtml(valueStr)}</div>
-        </div>
-        <div class="pdf-db-metric">
-          <div class="pdf-db-ml">Progress</div>
-          <div class="pdf-db-mv">${pct}%</div>
-          <div class="pdf-progress-track"><div class="pdf-progress-fill" style="width:${pct}%"></div></div>
-        </div>
-        <div class="pdf-db-metric">
-          <div class="pdf-db-ml">Target Launch</div>
-          <div class="pdf-db-mv" style="font-size:10px;line-height:1.3">${escHtml(launchStr)}</div>
-        </div>
-        <div class="pdf-db-metric">
-          <div class="pdf-db-ml">Account Manager</div>
-          <div class="pdf-db-mv" style="font-size:10px;line-height:1.3">${escHtml(amName)}</div>
+      <div class="dbc-name">${escHtml(p.projectName || 'Untitled')}</div>
+      <div class="dbc-meta">
+        <div class="dbc-value">${escHtml(valueStr)}</div>
+        <div class="dbc-dl-wrap">
+          <div class="dbc-dl-label">Next Deadline</div>
+          <div class="dbc-dl ${dl.cls}">${escHtml(dl.label)}</div>
         </div>
       </div>
+      <div class="dbc-progress-section">
+        <div class="dbc-progress-row">
+          <span class="dbc-progress-label">Progress</span>
+          <span class="dbc-progress-pct">${pct}%</span>
+        </div>
+        <div class="dbc-track"><div class="dbc-fill" style="width:${pct}%;background:${sc.bar}"></div></div>
+      </div>
+      ${msHtml}
     </div>`;
   }
 
-  // Build a section with 3 card slots
+  // Section layout
   function buildSection(title, subtitle, projects) {
     if (!projects.length) return '';
     const cards = projects.map(buildCard).join('');
     const empties = Array(Math.max(0, 3 - projects.length))
-      .fill('<div class="pdf-db-card pdf-db-card-empty"></div>').join('');
+      .fill('<div class="dbc dbc-empty"></div>').join('');
     return `<div class="pdf-db-section">
       <div class="pdf-section-header">
         <span class="pdf-section-title">${title}</span>
@@ -7453,6 +7445,18 @@ function exportDashboardPdf() {
       <div class="pdf-db-cards">${cards}${empties}</div>
     </div>`;
   }
+
+  // Section assignment (no overlap)
+  const byValue = [...allFiltered].sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+  const sec1 = byValue.slice(0, 3);
+  const sec1Ids = new Set(sec1.map(p => p.id));
+
+  const remaining1 = allFiltered.filter(p => !sec1Ids.has(p.id));
+  const sec2 = [...remaining1].sort((a, b) => projProgress(b) - projProgress(a)).slice(0, 3);
+  const sec2Ids = new Set(sec2.map(p => p.id));
+
+  const remaining2 = allFiltered.filter(p => !sec1Ids.has(p.id) && !sec2Ids.has(p.id));
+  const sec3 = [...remaining2].sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : -1)).slice(0, 3);
 
   const totalCount = allFiltered.length;
   const statusSub = AppState.filterStatus ? ` · ${AppState.filterStatus}` : '';
@@ -7473,13 +7477,12 @@ function exportDashboardPdf() {
 <title>Dashboard Summary \u2014 ${escHtml(headerTitle)}</title>
 <style>
 @font-face{font-family:'Archivo';font-weight:400;src:local('Archivo Regular'),local('Archivo-Regular'),local('Archivo')}
-@font-face{font-family:'Archivo';font-weight:500;src:local('Archivo Medium'),local('Archivo-Medium')}
-@font-face{font-family:'Archivo';font-weight:600;src:local('Archivo SemiBold'),local('Archivo-SemiBold')}
 @font-face{font-family:'Archivo';font-weight:700;src:local('Archivo Bold'),local('Archivo-Bold')}
 @font-face{font-family:'Archivo';font-weight:800;src:local('Archivo ExtraBold'),local('Archivo-ExtraBold')}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;padding:40px 20px;min-height:100vh}
-.pdf-page{width:816px;min-height:1056px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:'Archivo',Arial,Helvetica,sans-serif}
+.pdf-page{width:816px;min-height:1056px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.18);display:flex;flex-direction:column}
+/* Header */
 .pdf-header{background:#c20075;padding:20px 36px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
 .pdf-header-left{flex:1;min-width:0}
 .pdf-header-eyebrow{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:5px}
@@ -7488,34 +7491,46 @@ body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display
 .pdf-status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 12px}
 .pdf-status-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.85;flex-shrink:0}
 .pdf-generated{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px}
+/* Section headers */
+.pdf-db-body{flex:1;padding:18px 28px 14px;display:flex;flex-direction:column;gap:16px}
+.pdf-db-section{}
 .pdf-section-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #f0f0f0}
 .pdf-section-title{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#c20075}
 .pdf-section-divider{flex:1}
 .pdf-section-count{font-size:9px;font-weight:700;color:#ccc;letter-spacing:.04em}
-.pdf-progress-track{height:4px;background:#f0f0f0;border-radius:99px;overflow:hidden;margin-top:4px}
-.pdf-progress-fill{height:100%;background:#c20075;border-radius:99px}
-.pdf-footer{padding:12px 36px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;background:#fafafa;margin-top:auto}
+.pdf-db-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+/* Dashboard-style project card */
+.dbc{border:1px solid #e5e7eb;border-left:3px solid #ccc;border-radius:8px;background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.dbc-empty{border:1px dashed #efefef;border-radius:8px;background:#fafafa;min-height:80px}
+.dbc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;padding:10px 12px 6px}
+.dbc-client{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;line-height:1.3;flex:1;min-width:0}
+.dbc-status-badge{display:inline-flex;align-items:center;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
+.dbc-name{font-size:12px;font-weight:800;color:#111;line-height:1.3;letter-spacing:-.02em;padding:0 12px 8px}
+.dbc-meta{display:flex;align-items:flex-end;justify-content:space-between;padding:0 12px 8px;gap:8px}
+.dbc-value{font-size:16px;font-weight:800;color:#111;letter-spacing:-.03em;line-height:1}
+.dbc-dl-wrap{text-align:right;flex-shrink:0}
+.dbc-dl-label{font-size:7.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px}
+.dbc-dl{font-size:10px;font-weight:700;color:#374151}
+.dbc-dl.overdue{color:#dc2626}
+.dbc-dl.soon{color:#f59e0b}
+.dbc-progress-section{padding:0 12px 10px}
+.dbc-progress-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.dbc-progress-label{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af}
+.dbc-progress-pct{font-size:9px;font-weight:800;color:#374151}
+.dbc-track{height:5px;background:#f3f4f6;border-radius:99px;overflow:hidden}
+.dbc-fill{height:100%;border-radius:99px}
+/* Next Milestone */
+.dbc-milestone{border-top:1px solid #f3f4f6;padding:7px 12px 9px;margin-top:auto}
+.dbc-milestone-label{font-size:7.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#c20075;margin-bottom:3px}
+.dbc-milestone-row{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.dbc-milestone-name{font-size:9px;font-weight:700;color:#111;line-height:1.3;flex:1;min-width:0}
+.dbc-milestone-date{font-size:8px;font-weight:600;color:#6b7280;white-space:nowrap;flex-shrink:0}
+.dbc-milestone-none{font-size:9px;color:#d1d5db;font-style:italic}
+/* Footer */
+.pdf-footer{padding:12px 28px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;background:#fafafa}
 .pdf-footer-brand{font-size:10px;font-weight:800;color:#c20075;letter-spacing:.06em;text-transform:uppercase}
 .pdf-footer-meta{font-size:10px;color:#bbb}
 .pdf-footer-page{font-size:10px;color:#bbb}
-.pdf-db-body{flex:1;padding:20px 36px 16px;display:flex;flex-direction:column;gap:18px}
-.pdf-db-section{}
-.pdf-db-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.pdf-db-card{border:1.5px solid #eee;border-radius:8px;overflow:hidden;background:#fff}
-.pdf-db-card-empty{border:1.5px dashed #efefef;border-radius:8px;background:#fafafa;min-height:100px}
-.pdf-db-card-top{padding:10px 12px 8px;border-bottom:1px solid #f5f5f5}
-.pdf-db-card-name{font-size:11px;font-weight:800;color:#111;line-height:1.3;margin-bottom:2px;letter-spacing:-.01em}
-.pdf-db-card-client{font-size:9px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-.pdf-db-card-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.pdf-db-status-chip{display:inline-flex;align-items:center;gap:4px;background:#f5f5f5;border-radius:999px;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#555}
-.pdf-db-status-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.pdf-db-bigbet{display:inline-flex;align-items:center;background:#fde68a;color:#92400e;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:2px 7px}
-.pdf-db-metrics{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0}
-.pdf-db-metric{padding:7px 10px;border-right:1px solid #f5f5f5}
-.pdf-db-metric:last-child{border-right:none}
-.pdf-db-ml{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bbb;margin-bottom:3px}
-.pdf-db-mv{font-size:12px;font-weight:800;color:#111;letter-spacing:-.01em;line-height:1}
-.pdf-db-mv.accent{color:#c20075}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   @page{margin:0;size:letter}
