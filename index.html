@@ -2663,6 +2663,107 @@ button.big-bet-active {
  padding: 0 14px;
  }
 
+ /* ── Filters Panel ── */
+ .fp-wrap {
+ position: relative;
+ flex-shrink: 0;
+ }
+ .fp-btn-badge {
+ display: inline-flex; align-items: center; justify-content: center;
+ background: var(--accent); color: #fff;
+ font-size: 10px; font-weight: 700; border-radius: 99px;
+ min-width: 16px; height: 16px; padding: 0 4px;
+ margin-left: 5px; line-height: 1;
+ }
+ .fp-panel {
+ display: none;
+ position: absolute;
+ top: calc(100% + 6px);
+ left: 0;
+ z-index: 200;
+ width: 340px;
+ background: var(--bg-elevated);
+ border: 1px solid var(--border-default);
+ border-radius: var(--radius-lg);
+ box-shadow: 0 8px 32px rgba(0,0,0,.28);
+ overflow: hidden;
+ }
+ .fp-panel.open { display: block; }
+ .fp-panel-inner {
+ max-height: 80vh;
+ overflow-y: auto;
+ padding: 16px;
+ display: flex;
+ flex-direction: column;
+ gap: 14px;
+ }
+ .fp-section-label {
+ font-size: 10px; font-weight: 700; letter-spacing: .08em;
+ text-transform: uppercase; color: var(--text-muted);
+ margin-bottom: 7px;
+ }
+ .fp-clients-list {
+ display: flex; flex-direction: column; gap: 3px;
+ max-height: 150px; overflow-y: auto;
+ }
+ .fp-client-row {
+ display: flex; align-items: center; gap: 8px;
+ padding: 4px 6px; border-radius: var(--radius-sm);
+ cursor: pointer;
+ }
+ .fp-client-row:hover { background: var(--bg-card-hover); }
+ .fp-client-row input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+ .fp-client-row label { font-size: var(--font-sm); color: var(--text-secondary); cursor: pointer; flex: 1; }
+ .fp-client-row.all-row label { font-weight: 600; color: var(--text-primary); }
+ .fp-value-row {
+ display: flex; align-items: center; gap: 6px;
+ }
+ .fp-value-row span { font-size: var(--font-sm); color: var(--text-muted); flex-shrink: 0; }
+ .fp-value-input {
+ flex: 1; height: 30px; padding: 0 8px;
+ background: var(--bg-card); border: 1px solid var(--border-default);
+ border-radius: var(--radius-sm); color: var(--text-primary);
+ font-size: var(--font-sm); outline: none;
+ }
+ .fp-value-input:focus { border-color: var(--border-focus); }
+ .fp-date-row {
+ display: flex; align-items: center; gap: 6px;
+ }
+ .fp-date-input {
+ flex: 1; height: 30px; padding: 0 8px;
+ background: var(--bg-card); border: 1px solid var(--border-default);
+ border-radius: var(--radius-sm); color: var(--text-primary);
+ font-size: var(--font-sm); outline: none; color-scheme: dark;
+ }
+ .fp-date-input:focus { border-color: var(--border-focus); }
+ .fp-select {
+ width: 100%; height: 32px; padding: 0 28px 0 10px;
+ background: var(--bg-card); border: 1px solid var(--border-default);
+ border-radius: var(--radius-sm); color: var(--text-secondary);
+ font-size: var(--font-sm); cursor: pointer; appearance: none; outline: none;
+ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6a8a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+ background-repeat: no-repeat; background-position: right 8px center;
+ }
+ .fp-toggle-row {
+ display: flex; align-items: center; justify-content: space-between;
+ padding: 4px 0;
+ }
+ .fp-toggle-label { font-size: var(--font-sm); color: var(--text-secondary); }
+ .fp-toggle-row input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+ .fp-footer {
+ padding: 10px 16px;
+ border-top: 1px solid var(--border-subtle);
+ display: flex; align-items: center; justify-content: flex-end;
+ }
+ .fp-clear-btn {
+ font-size: var(--font-xs); color: var(--text-muted);
+ background: transparent; border: 1px solid var(--border-subtle);
+ border-radius: var(--radius-md); padding: 5px 10px; cursor: pointer;
+ transition: all var(--transition-fast);
+ }
+ .fp-clear-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+ .fp-divider { height: 1px; background: var(--border-subtle); margin: 2px 0; }
+
  /* ═══════════════════════════════════════════════
  QUICK-VIEW MODAL — Task 4
  ═══════════════════════════════════════════════ */
@@ -3489,6 +3590,10 @@ const AppState = {
  filterStatus: '',
  filterDeadlineFrom: '',
  filterDeadlineTo: '',
+ filterMinValue: '',
+ filterMaxValue: '',
+ filterBigBet: false,
+ filterAccountManager: '',
  sortBy: 'deadline', // 'deadline' | 'value' | 'client' | 'status'
  sortDir: 'asc',
  searchQuery: '',
@@ -3638,6 +3743,27 @@ function getFilteredProjects() {
  projects = projects.filter(p => {
  const d = getNextDeadline(p);
  return d && d <= AppState.filterDeadlineTo;
+ });
+ }
+
+ // Filter by value range
+ if (AppState.filterMinValue !== '') {
+ projects = projects.filter(p => Number(p.value||0) >= Number(AppState.filterMinValue));
+ }
+ if (AppState.filterMaxValue !== '') {
+ projects = projects.filter(p => Number(p.value||0) <= Number(AppState.filterMaxValue));
+ }
+
+ // Filter by Big Bet
+ if (AppState.filterBigBet) {
+ projects = projects.filter(p => p.isBigBet);
+ }
+
+ // Filter by Account Manager
+ if (AppState.filterAccountManager) {
+ projects = projects.filter(p => {
+  const am = (p.teamMembers||[]).find(m => m.isAccountManager);
+  return am && am.name === AppState.filterAccountManager;
  });
  }
 
@@ -4262,6 +4388,25 @@ function _bindDetailViewEvents(projectId) {
 }
 
 /* ──────────────────────────────────────────────
+ MILESTONE HELPERS
+────────────────────────────────────────────── */
+// Returns the bar % position of the most recently completed milestone (or 0)
+function _getLastCompletedMilestonePct(project) {
+ const milestones = (project.milestones || []).filter(m => m.completed && m.date);
+ if (!milestones.length) return 0;
+ const startDateStr = project.startDate || (project.createdAt ? project.createdAt.slice(0,10) : null);
+ const endDateStr   = project.targetLaunchDate || null;
+ const startTs = startDateStr ? new Date(startDateStr + 'T00:00:00').getTime() : null;
+ const endTs   = endDateStr   ? new Date(endDateStr + 'T00:00:00').getTime() : null;
+ if (!startTs || !endTs || endTs <= startTs) return 0;
+ const sorted = [...milestones].sort((a,b) => a.date > b.date ? -1 : 1); // newest first
+ const lastM = sorted[0];
+ const mTs = new Date(lastM.date + 'T00:00:00').getTime();
+ const pct = ((mTs - startTs) / (endTs - startTs)) * 100;
+ return Math.max(0, Math.min(100, pct));
+}
+
+/* ──────────────────────────────────────────────
  MILESTONE DOTS — positions milestones along the progress bar
  Always renders start (0%) and end (100%) anchor dots.
  Intermediate milestone dots are proportionally placed by date.
@@ -4325,6 +4470,8 @@ function _buildHeaderSection(project) {
  ? (project.pausedProgress ?? project.progress ?? 0)
  : (project.progress ?? 0);
  const sk = statusKey(project.status);
+ // Bar fills to at least the position of the last completed milestone
+ const barWidth = Math.max(progress, _getLastCompletedMilestonePct(project));
 
  const lastUpdated = project.lastUpdated
  ? new Date(project.lastUpdated).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})
@@ -4379,7 +4526,7 @@ function _buildHeaderSection(project) {
  </div>
  </div>
  <div class="progress-bar-track dv-progress-bar-large">
- <div class="progress-bar-fill progress-fill-${sk}" id="dv-progress-fill" style="width:${progress}%"></div>
+ <div class="progress-bar-fill progress-fill-${sk}" id="dv-progress-fill" style="width:${barWidth}%"></div>
  ${_buildMilestoneDots(project)}
  </div>
  ${(project.startDate || project.createdAt || project.targetLaunchDate || (project.milestones||[]).length) ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px">● = start / milestone / target · filled = complete · hover for details</div>` : ''}
@@ -6255,104 +6402,164 @@ function renderFilterBar() {
  if (!bar || !actions) return;
 
  const clients = DB.getClients();
- const projects = DB.getProjects();
+ const allProjects = DB.getProjects();
 
- // ── Build client options ──
- const clientOpts = clients.map(c =>
- `<option value="${c.id}">${escHtml(c.name)}</option>`
+ // Collect unique account managers across all projects
+ const amSet = new Set();
+ allProjects.forEach(p => {
+  const am = (p.teamMembers||[]).find(m => m.isAccountManager);
+  if (am && am.name) amSet.add(am.name);
+ });
+ const amOptions = [...amSet].sort().map(name =>
+  `<option value="${escHtml(name)}"${AppState.filterAccountManager===name?' selected':''}>${escHtml(name)}</option>`
  ).join('');
 
- // ── Filter bar HTML ──
+ const panelActive = _panelFiltersActive();
+ const panelBadge = panelActive ? `<span class="fp-btn-badge">${[
+  AppState.filterClients.length > 0,
+  !!AppState.filterStatus,
+  !!AppState.filterDeadlineFrom || !!AppState.filterDeadlineTo,
+  AppState.filterMinValue !== '' || AppState.filterMaxValue !== '',
+  AppState.filterBigBet,
+  !!AppState.filterAccountManager,
+  AppState.hideDone
+ ].filter(Boolean).length}</span>` : '';
+
+ // ── Filter bar HTML (Search + Filters button + Sort) ──
  bar.innerHTML = `
  <!-- Search -->
  <div id="search-input-wrap">
- <span class="search-icon"></span>
- <input id="search-input"
- type="text"
- placeholder="Search projects or clients…"
- value="${escHtml(AppState.searchQuery)}"
- autocomplete="off" />
+  <span class="search-icon"></span>
+  <input id="search-input" type="text" placeholder="Search projects or clients…"
+   value="${escHtml(AppState.searchQuery)}" autocomplete="off" />
  </div>
 
  <div class="filter-sep"></div>
 
- <!-- Client filter: multi-select dropdown -->
- <div class="multi-select-wrap" id="client-filter-wrap">
-  <button type="button" class="filter-select multi-select-btn${AppState.filterClients.length > 0 ? ' has-value' : ''}" id="client-filter-btn">
-   ${AppState.filterClients.length === 0 ? 'All Clients' : AppState.filterClients.length === 1 ? (DB.getClients().find(c=>c.id===AppState.filterClients[0])?.name || '1 client') : AppState.filterClients.length + ' clients'}
+ <!-- Filters panel button -->
+ <div class="fp-wrap" id="fp-wrap">
+  <button type="button" class="btn btn-secondary btn-sm${panelActive ? ' has-value' : ''}" id="fp-btn" style="height:34px">
+   Filters${panelBadge}
   </button>
-  <div class="multi-select-dropdown" id="client-filter-dropdown">
-   <div class="multi-select-option" data-client-id="">
-    <input type="checkbox" id="cf-all" ${AppState.filterClients.length === 0 ? 'checked' : ''} />
-    <label for="cf-all">All Clients</label>
+  <div class="fp-panel" id="fp-panel">
+   <div class="fp-panel-inner">
+
+    <!-- Clients -->
+    <div>
+     <div class="fp-section-label">Clients</div>
+     <div class="fp-clients-list">
+      <div class="fp-client-row all-row">
+       <input type="checkbox" id="fp-all-clients" data-client-id="" ${AppState.filterClients.length===0 ? 'checked' : ''} />
+       <label for="fp-all-clients">All Clients</label>
+      </div>
+      ${clients.map((c,i) => `
+      <div class="fp-client-row">
+       <input type="checkbox" id="fp-c-${i}" data-client-id="${c.id}" ${AppState.filterClients.includes(c.id) ? 'checked' : ''} />
+       <label for="fp-c-${i}">${escHtml(c.name)}</label>
+      </div>`).join('')}
+     </div>
+    </div>
+
+    <div class="fp-divider"></div>
+
+    <!-- Status -->
+    <div>
+     <div class="fp-section-label">Status</div>
+     <select class="fp-select" id="fp-status">
+      <option value="">All Statuses</option>
+      ${STATUSES.map(s => `<option value="${s}"${AppState.filterStatus===s?' selected':''}>${s}</option>`).join('')}
+     </select>
+    </div>
+
+    <div class="fp-divider"></div>
+
+    <!-- Project Value range -->
+    <div>
+     <div class="fp-section-label">Project Value</div>
+     <div class="fp-value-row">
+      <span>$</span>
+      <input type="number" class="fp-value-input" id="fp-min-value" placeholder="Min" min="0" value="${AppState.filterMinValue}" />
+      <span>–</span>
+      <span>$</span>
+      <input type="number" class="fp-value-input" id="fp-max-value" placeholder="Max" min="0" value="${AppState.filterMaxValue}" />
+     </div>
+    </div>
+
+    <div class="fp-divider"></div>
+
+    <!-- Deadline range -->
+    <div>
+     <div class="fp-section-label">Deadline Range</div>
+     <div class="fp-date-row">
+      <input type="date" class="fp-date-input" id="fp-deadline-from" value="${AppState.filterDeadlineFrom}" />
+      <span style="color:var(--text-muted);font-size:11px">→</span>
+      <input type="date" class="fp-date-input" id="fp-deadline-to" value="${AppState.filterDeadlineTo}" />
+     </div>
+    </div>
+
+    ${amOptions ? `
+    <div class="fp-divider"></div>
+    <!-- Account Manager -->
+    <div>
+     <div class="fp-section-label">Account Manager</div>
+     <select class="fp-select" id="fp-account-manager">
+      <option value="">All Account Managers</option>
+      ${amOptions}
+     </select>
+    </div>` : ''}
+
+    <div class="fp-divider"></div>
+
+    <!-- Toggles -->
+    <div>
+     <div class="fp-toggle-row">
+      <span class="fp-toggle-label">Big Bets only</span>
+      <input type="checkbox" id="fp-big-bet" ${AppState.filterBigBet ? 'checked' : ''} />
+     </div>
+     <div class="fp-toggle-row" style="margin-top:6px">
+      <span class="fp-toggle-label">Hide Completed &amp; Live</span>
+      <input type="checkbox" id="fp-hide-done" ${AppState.hideDone ? 'checked' : ''} />
+     </div>
+    </div>
+
    </div>
-   ${DB.getClients().map((c,i) => `
-   <div class="multi-select-option" data-client-id="${c.id}">
-    <input type="checkbox" id="cf-${i}" ${AppState.filterClients.includes(c.id) ? 'checked' : ''} data-client-id="${c.id}" />
-    <label for="cf-${i}">${escHtml(c.name)}</label>
-   </div>`).join('')}
+   <div class="fp-footer">
+    <button class="fp-clear-btn" id="fp-clear-btn">Clear all filters</button>
+   </div>
   </div>
  </div>
-
- <!-- Status filter -->
- <select id="filter-status" class="filter-select${AppState.filterStatus ? ' has-value' : ''}">
- <option value="">All Statuses</option>
- ${STATUSES.map(s => `<option value="${s}"${AppState.filterStatus===s?' selected':''}>${s}</option>`).join('')}
- </select>
-
- <div class="filter-sep"></div>
-
- <!-- Deadline range -->
- <input id="filter-deadline-from"
- class="filter-date${AppState.filterDeadlineFrom ? ' has-value' : ''}"
- type="date"
- title="Deadline from"
- value="${AppState.filterDeadlineFrom}" />
- <span style="font-size:var(--font-xs);color:var(--text-muted);flex-shrink:0">→</span>
- <input id="filter-deadline-to"
- class="filter-date${AppState.filterDeadlineTo ? ' has-value' : ''}"
- type="date"
- title="Deadline to"
- value="${AppState.filterDeadlineTo}" />
 
  <div class="filter-sep"></div>
 
  <!-- Sort -->
  <div class="sort-group">
- <span class="sort-label-text">Sort</span>
- <select id="sort-by" class="sort-select">
- <option value="deadline"${AppState.sortBy==='deadline'?' selected':''}>Deadline</option>
- <option value="value"${AppState.sortBy==='value'?' selected':''}>Value</option>
- <option value="client"${AppState.sortBy==='client'?' selected':''}>Client</option>
- <option value="status"${AppState.sortBy==='status'?' selected':''}>Status</option>
- </select>
- <button id="sort-dir-btn" class="sort-dir-btn" title="Toggle sort direction">
- ${AppState.sortDir === 'asc' ? '↑' : '↓'}
- </button>
+  <span class="sort-label-text">Sort</span>
+  <select id="sort-by" class="sort-select">
+   <option value="deadline"${AppState.sortBy==='deadline'?' selected':''}>Deadline</option>
+   <option value="value"${AppState.sortBy==='value'?' selected':''}>Value</option>
+   <option value="client"${AppState.sortBy==='client'?' selected':''}>Client</option>
+   <option value="status"${AppState.sortBy==='status'?' selected':''}>Status</option>
+  </select>
+  <button id="sort-dir-btn" class="sort-dir-btn" title="Toggle sort direction">
+   ${AppState.sortDir === 'asc' ? '↑' : '↓'}
+  </button>
  </div>
 
- <!-- Clear filters -->
- <button id="clear-filters-btn" class="${filtersActive() ? 'visible' : ''}"> Clear</button>
-
- <!-- Result count -->
+ <!-- Clear search + result count -->
+ <button id="clear-filters-btn" class="${filtersActive() ? 'visible' : ''}">✕ Clear</button>
  <span id="result-count"></span>
  `;
 
- // Multi-select dropdown state is set inline in the HTML template above
-
  // ── Dashboard action buttons ──
- const hideDoneActive = AppState.hideDone ? ' active' : '';
  const isListView = AppState.viewMode === 'list';
  actions.innerHTML = `
- <button class="btn btn-secondary btn-sm view-toggle-btn" id="view-toggle-btn" title="Switch to ${isListView ? 'grid' : 'list'} view">
+ <button class="btn btn-secondary btn-sm" id="view-toggle-btn" title="Switch to ${isListView ? 'grid' : 'list'} view">
   ${isListView
-   ? `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg> Grid`
-   : `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="4" x2="15" y2="4"/><line x1="1" y1="8" x2="15" y2="8"/><line x1="1" y1="12" x2="15" y2="12"/></svg> List`}
- </button>
- <button class="btn btn-secondary btn-sm toggle-done-btn${hideDoneActive}" id="toggle-done-btn" title="${AppState.hideDone ? 'Show Live & Completed' : 'Hide Live & Completed'}">
- ${AppState.hideDone ? 'Show Completed' : 'Hide Completed'}
+   ? `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg> Grid`
+   : `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="4" x2="15" y2="4"/><line x1="1" y1="8" x2="15" y2="8"/><line x1="1" y1="12" x2="15" y2="12"/></svg> List`}
  </button>
  <button class="btn btn-secondary btn-sm" id="add-client-btn">Manage Clients</button>
+ <button class="btn btn-secondary btn-sm" id="export-summary-btn">Export Summary</button>
  <button class="btn btn-primary btn-sm" id="add-project-btn">+ Add Project</button>
  `;
 
@@ -6365,7 +6572,24 @@ function filtersActive() {
  AppState.filterClients.length > 0 ||
  AppState.filterStatus ||
  AppState.filterDeadlineFrom ||
- AppState.filterDeadlineTo);
+ AppState.filterDeadlineTo ||
+ AppState.filterMinValue !== '' ||
+ AppState.filterMaxValue !== '' ||
+ AppState.filterBigBet ||
+ AppState.filterAccountManager ||
+ AppState.hideDone);
+}
+
+function _panelFiltersActive() {
+ return !!(AppState.filterClients.length > 0 ||
+ AppState.filterStatus ||
+ AppState.filterDeadlineFrom ||
+ AppState.filterDeadlineTo ||
+ AppState.filterMinValue !== '' ||
+ AppState.filterMaxValue !== '' ||
+ AppState.filterBigBet ||
+ AppState.filterAccountManager ||
+ AppState.hideDone);
 }
 
 function updateResultCount() {
@@ -6408,137 +6632,161 @@ function bindFilterBarEvents() {
  });
  }
 
- // Client multi-select filter
- const clientBtn = document.getElementById('client-filter-btn');
- const clientDropdown = document.getElementById('client-filter-dropdown');
- const clientWrap = document.getElementById('client-filter-wrap');
- if (clientBtn && clientDropdown) {
-  clientBtn.addEventListener('click', e => {
-   e.stopPropagation();
-   const isOpen = clientDropdown.classList.toggle('open');
-   clientBtn.classList.toggle('open', isOpen);
-  });
-  clientDropdown.addEventListener('change', e => {
-   const cb = e.target;
-   if (!cb.matches('input[type="checkbox"]')) return;
-   const cid = cb.dataset.clientId;
-   if (cid === '') {
-    AppState.filterClients = [];
-    clientDropdown.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = (c.dataset.clientId === ''); });
+ // ── Filters panel open/close ──
+ const fpBtn = document.getElementById('fp-btn');
+ const fpPanel = document.getElementById('fp-panel');
+ const fpWrap = document.getElementById('fp-wrap');
+ if (fpBtn && fpPanel) {
+  fpBtn.addEventListener('click', e => { e.stopPropagation(); fpPanel.classList.toggle('open'); });
+  document.addEventListener('click', e => { if (fpWrap && !fpWrap.contains(e.target)) fpPanel.classList.remove('open'); });
+ }
+
+ function _refreshAfterFilter() {
+  renderProjectGrid();
+  renderStatsBar(getFilteredProjects());
+  updateResultCount();
+  // Refresh the badge count on Filters button without full re-render
+  const badge = document.querySelector('#fp-btn .fp-btn-badge');
+  const count = [
+   AppState.filterClients.length > 0,
+   !!AppState.filterStatus,
+   !!AppState.filterDeadlineFrom || !!AppState.filterDeadlineTo,
+   AppState.filterMinValue !== '' || AppState.filterMaxValue !== '',
+   AppState.filterBigBet,
+   !!AppState.filterAccountManager,
+   AppState.hideDone
+  ].filter(Boolean).length;
+  if (fpBtn) {
+   if (count > 0) {
+    if (badge) badge.textContent = count;
+    else fpBtn.insertAdjacentHTML('beforeend', `<span class="fp-btn-badge">${count}</span>`);
+    fpBtn.classList.add('has-value');
    } else {
-    const allCb = clientDropdown.querySelector('input[data-client-id=""]');
+    if (badge) badge.remove();
+    fpBtn.classList.remove('has-value');
+   }
+  }
+ }
+
+ // Client checkboxes — fix: All Clients checkbox properly selects/deselects all
+ if (fpPanel) {
+  fpPanel.addEventListener('change', e => {
+   const cb = e.target;
+   if (!cb.matches('input[type="checkbox"][data-client-id]')) return;
+   const cid = cb.dataset.clientId;
+   const allClients = DB.getClients();
+   if (cid === '') {
+    // "All Clients" clicked — clear or restore all depending on checked state
+    if (cb.checked) {
+     AppState.filterClients = [];
+     fpPanel.querySelectorAll('input[data-client-id]:not([data-client-id=""])').forEach(c => c.checked = false);
+    } else {
+     // Unchecking "All Clients" means deselect everything (same as all checked = show all)
+     AppState.filterClients = [];
+    }
+   } else {
     if (cb.checked) { if (!AppState.filterClients.includes(cid)) AppState.filterClients.push(cid); }
     else { AppState.filterClients = AppState.filterClients.filter(id => id !== cid); }
+    const allCb = fpPanel.querySelector('input[data-client-id=""]');
     if (allCb) allCb.checked = AppState.filterClients.length === 0;
    }
-   const clients = DB.getClients();
-   if (AppState.filterClients.length === 0) { clientBtn.textContent = 'All Clients'; }
-   else if (AppState.filterClients.length === 1) { clientBtn.textContent = clients.find(c => c.id === AppState.filterClients[0])?.name || '1 client'; }
-   else { clientBtn.textContent = AppState.filterClients.length + ' clients'; }
-   clientBtn.classList.toggle('has-value', AppState.filterClients.length > 0);
-   renderProjectGrid();
-   renderStatsBar(getFilteredProjects());
-   updateResultCount();
+   _refreshAfterFilter();
   });
-  document.addEventListener('click', e => {
-   if (clientWrap && !clientWrap.contains(e.target)) {
-    clientDropdown.classList.remove('open');
-    clientBtn.classList.remove('open');
-   }
+
+  // Status
+  const fpStatus = document.getElementById('fp-status');
+  if (fpStatus) fpStatus.addEventListener('change', e => { AppState.filterStatus = e.target.value; _refreshAfterFilter(); });
+
+  // Value range
+  const fpMin = document.getElementById('fp-min-value');
+  const fpMax = document.getElementById('fp-max-value');
+  if (fpMin) fpMin.addEventListener('input', e => { AppState.filterMinValue = e.target.value; _refreshAfterFilter(); });
+  if (fpMax) fpMax.addEventListener('input', e => { AppState.filterMaxValue = e.target.value; _refreshAfterFilter(); });
+
+  // Deadline range
+  const fpDFrom = document.getElementById('fp-deadline-from');
+  const fpDTo   = document.getElementById('fp-deadline-to');
+  if (fpDFrom) fpDFrom.addEventListener('change', e => { AppState.filterDeadlineFrom = e.target.value; _refreshAfterFilter(); });
+  if (fpDTo)   fpDTo.addEventListener('change',   e => { AppState.filterDeadlineTo   = e.target.value; _refreshAfterFilter(); });
+
+  // Account Manager
+  const fpAM = document.getElementById('fp-account-manager');
+  if (fpAM) fpAM.addEventListener('change', e => { AppState.filterAccountManager = e.target.value; _refreshAfterFilter(); });
+
+  // Big Bet toggle
+  const fpBigBet = document.getElementById('fp-big-bet');
+  if (fpBigBet) fpBigBet.addEventListener('change', e => { AppState.filterBigBet = e.target.checked; _refreshAfterFilter(); });
+
+  // Hide done toggle
+  const fpHideDone = document.getElementById('fp-hide-done');
+  if (fpHideDone) fpHideDone.addEventListener('change', e => { AppState.hideDone = e.target.checked; _refreshAfterFilter(); });
+
+  // Clear panel filters
+  const fpClear = document.getElementById('fp-clear-btn');
+  if (fpClear) fpClear.addEventListener('click', () => {
+   AppState.filterClients = [];
+   AppState.filterStatus = '';
+   AppState.filterDeadlineFrom = '';
+   AppState.filterDeadlineTo = '';
+   AppState.filterMinValue = '';
+   AppState.filterMaxValue = '';
+   AppState.filterBigBet = false;
+   AppState.filterAccountManager = '';
+   AppState.hideDone = false;
+   renderFilterBar();
+   fpPanel && document.getElementById('fp-panel') && document.getElementById('fp-panel').classList.add('open');
+   _refreshAfterFilter();
   });
- }
-
- // Status filter
- const statusEl = document.getElementById('filter-status');
- if (statusEl) {
- statusEl.addEventListener('change', e => {
- AppState.filterStatus = e.target.value;
- statusEl.classList.toggle('has-value', !!e.target.value);
- renderProjectGrid();
- updateResultCount();
- });
- }
-
- // Deadline from
- const dfEl = document.getElementById('filter-deadline-from');
- if (dfEl) {
- dfEl.addEventListener('change', e => {
- AppState.filterDeadlineFrom = e.target.value;
- dfEl.classList.toggle('has-value', !!e.target.value);
- renderProjectGrid();
- updateResultCount();
- });
- }
-
- // Deadline to
- const dtEl = document.getElementById('filter-deadline-to');
- if (dtEl) {
- dtEl.addEventListener('change', e => {
- AppState.filterDeadlineTo = e.target.value;
- dtEl.classList.toggle('has-value', !!e.target.value);
- renderProjectGrid();
- updateResultCount();
- });
  }
 
  // Sort by
  const sortByEl = document.getElementById('sort-by');
- if (sortByEl) {
- sortByEl.addEventListener('change', e => {
- AppState.sortBy = e.target.value;
- renderProjectGrid();
- });
- }
+ if (sortByEl) sortByEl.addEventListener('change', e => { AppState.sortBy = e.target.value; renderProjectGrid(); });
 
  // Sort direction toggle
  const sortDirBtn = document.getElementById('sort-dir-btn');
- if (sortDirBtn) {
- sortDirBtn.addEventListener('click', () => {
- AppState.sortDir = AppState.sortDir === 'asc' ? 'desc' : 'asc';
- sortDirBtn.textContent = AppState.sortDir === 'asc' ? '↑' : '↓';
- renderProjectGrid();
+ if (sortDirBtn) sortDirBtn.addEventListener('click', () => {
+  AppState.sortDir = AppState.sortDir === 'asc' ? 'desc' : 'asc';
+  sortDirBtn.textContent = AppState.sortDir === 'asc' ? '↑' : '↓';
+  renderProjectGrid();
  });
- }
 
- // Clear all filters
+ // Clear search button (top bar)
  const clearBtn = document.getElementById('clear-filters-btn');
- if (clearBtn) {
- clearBtn.addEventListener('click', () => {
- AppState.searchQuery = '';
- AppState.filterClients = [];
- AppState.filterStatus = '';
- AppState.filterDeadlineFrom = '';
- AppState.filterDeadlineTo = '';
- renderFilterBar();
- renderProjectGrid();
+ if (clearBtn) clearBtn.addEventListener('click', () => {
+  AppState.searchQuery = '';
+  AppState.filterClients = [];
+  AppState.filterStatus = '';
+  AppState.filterDeadlineFrom = '';
+  AppState.filterDeadlineTo = '';
+  AppState.filterMinValue = '';
+  AppState.filterMaxValue = '';
+  AppState.filterBigBet = false;
+  AppState.filterAccountManager = '';
+  AppState.hideDone = false;
+  renderFilterBar();
+  renderProjectGrid();
  });
- }
 
  // Add Project button
  const addProjBtn = document.getElementById('add-project-btn');
  if (addProjBtn) addProjBtn.addEventListener('click', openAddProjectModal);
 
- // Add Client button
+ // Manage Clients button
  const addClientBtn = document.getElementById('add-client-btn');
  if (addClientBtn) addClientBtn.addEventListener('click', openClientsManagerModal);
 
- const toggleDoneBtn = document.getElementById('toggle-done-btn');
- if (toggleDoneBtn) {
- toggleDoneBtn.addEventListener('click', () => {
- AppState.hideDone = !AppState.hideDone;
- renderFilterBar();
- renderProjectGrid();
- });
- }
+ // Export Summary PDF
+ const exportSummaryBtn = document.getElementById('export-summary-btn');
+ if (exportSummaryBtn) exportSummaryBtn.addEventListener('click', exportDashboardPdf);
 
+ // View toggle
  const viewToggleBtn = document.getElementById('view-toggle-btn');
- if (viewToggleBtn) {
- viewToggleBtn.addEventListener('click', () => {
+ if (viewToggleBtn) viewToggleBtn.addEventListener('click', () => {
   AppState.viewMode = AppState.viewMode === 'grid' ? 'list' : 'grid';
-  renderFilterBar();   // re-render button with new icon/label
-  renderProjectGrid(); // re-render cards in new mode
+  renderFilterBar();
+  renderProjectGrid();
  });
- }
 }
 
 /* ─────────────────────────────────────────────────
@@ -6949,8 +7197,8 @@ function _buildPdfLayout(project) {
   const ownerName = project.owner || CURRENT_USER || '—';
 
   // Value
-  const valueStr = project.pipelineValue
-    ? '$' + Number(project.pipelineValue).toLocaleString()
+  const valueStr = project.value
+    ? '$' + Number(project.value).toLocaleString()
     : '—';
 
   // Status
@@ -6996,7 +7244,7 @@ function _buildPdfLayout(project) {
     }
     return `<tr>
       <td>${checkHtml}</td>
-      <td>${escHtml(t.title || '')}</td>
+      <td>${escHtml(t.name || '')}</td>
       <td style="color:#888;font-size:10px">${escHtml(t.owner || '')}</td>
       <td>${dueHtml}</td>
       <td><span class="pdf-task-chip ${taskChipClass(t.status)}">${taskChipLabel(t.status)}</span></td>
@@ -7004,7 +7252,8 @@ function _buildPdfLayout(project) {
   }).join('');
 
   // Notes — last 3
-  const notes = [...(project.notes || [])].sort((a, b) => (b.timestamp||'') > (a.timestamp||'') ? 1 : -1).slice(0, 3).reverse();
+  // Sort newest-first, take last 3, then reverse so oldest prints first (reads chronologically)
+  const notes = [...(project.notes || [])].sort((a, b) => (a.timestamp||'') < (b.timestamp||'') ? 1 : -1).slice(0, 3).reverse();
   const noteCountNote = (project.notes||[]).length > 3
     ? `${Math.min(3,(project.notes||[]).length)} of ${(project.notes||[]).length} shown · most recent`
     : `${notes.length} note${notes.length !== 1 ? 's' : ''}`;
@@ -7016,7 +7265,7 @@ function _buildPdfLayout(project) {
         <span class="pdf-note-author">${escHtml(n.author || '')}</span>
         <span class="pdf-note-when">${escHtml(when)}</span>
       </div>
-      <div class="pdf-note-body">${escHtml(n.text || '')}</div>
+      <div class="pdf-note-body">${escHtml(n.body || '')}</div>
     </div>`;
   }).join('');
 
@@ -7096,17 +7345,313 @@ function _buildPdfLayout(project) {
   </div>`;
 }
 
+function exportDashboardPdf() {
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const allFiltered = getFilteredProjects();
+  if (!allFiltered.length) {
+    Toast.error('No projects to export.');
+    return;
+  }
+
+  // Determine header title
+  let headerTitle = 'All Projects';
+  if (AppState.filterClients.length === 1) {
+    const c = DB.getClient(AppState.filterClients[0]);
+    if (c) headerTitle = c.name || headerTitle;
+  }
+  const amLabel = AppState.filterAccountManager || '';
+
+  // Helper: compute task-based progress %
+  function projProgress(p) {
+    const tasks = p.tasks || [];
+    const done = tasks.filter(t => t.status === 'Done').length;
+    return tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  }
+
+  // Section 1: top 3 by value descending
+  const byValue = [...allFiltered].sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+  const sec1 = byValue.slice(0, 3);
+  const sec1Ids = new Set(sec1.map(p => p.id));
+
+  // Section 2: top 3 by progress descending, no overlap with sec1
+  const remaining1 = allFiltered.filter(p => !sec1Ids.has(p.id));
+  const byProgress = [...remaining1].sort((a, b) => projProgress(b) - projProgress(a));
+  const sec2 = byProgress.slice(0, 3);
+  const sec2Ids = new Set(sec2.map(p => p.id));
+
+  // Section 3: top 3 by createdAt descending, no overlap with sec1 or sec2
+  const remaining2 = allFiltered.filter(p => !sec1Ids.has(p.id) && !sec2Ids.has(p.id));
+  const byCreated = [...remaining2].sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : -1));
+  const sec3 = byCreated.slice(0, 3);
+
+  // Build a compact project card
+  function buildCard(p) {
+    const pct = projProgress(p);
+    const valueStr = p.value ? '$' + Number(p.value).toLocaleString() : '—';
+    const am = (p.teamMembers || []).find(m => m.isAccountManager);
+    const amName = am ? am.name : '—';
+    let launchStr = '—';
+    if (p.targetLaunchDate) {
+      const d = new Date(p.targetLaunchDate + 'T00:00:00');
+      launchStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    const statusLabel = p.status || 'In Progress';
+    const statusDotColors = {
+      'Planning': '#6b7280', 'In Progress': '#3b82f6', 'On Hold': '#f59e0b',
+      'Launching': '#10b981', 'Launched': '#10b981', 'Done': '#9ca3af'
+    };
+    const dotColor = statusDotColors[statusLabel] || '#6b7280';
+    const bigBetHtml = p.isBigBet ? `<span class="pdf-db-bigbet">&#9733; Big Bet</span>` : '';
+    return `<div class="pdf-db-card">
+      <div class="pdf-db-card-top">
+        <div class="pdf-db-card-name">${escHtml(p.projectName || 'Untitled')}</div>
+        <div class="pdf-db-card-client">${escHtml(p.clientName || '')}</div>
+        <div class="pdf-db-card-meta">
+          <span class="pdf-db-status-chip">
+            <span class="pdf-db-status-dot" style="background:${dotColor}"></span>
+            ${escHtml(statusLabel)}
+          </span>
+          ${bigBetHtml}
+        </div>
+      </div>
+      <div class="pdf-db-metrics">
+        <div class="pdf-db-metric">
+          <div class="pdf-db-ml">Value</div>
+          <div class="pdf-db-mv accent">${escHtml(valueStr)}</div>
+        </div>
+        <div class="pdf-db-metric">
+          <div class="pdf-db-ml">Progress</div>
+          <div class="pdf-db-mv">${pct}%</div>
+          <div class="pdf-progress-track"><div class="pdf-progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="pdf-db-metric">
+          <div class="pdf-db-ml">Target Launch</div>
+          <div class="pdf-db-mv" style="font-size:10px;line-height:1.3">${escHtml(launchStr)}</div>
+        </div>
+        <div class="pdf-db-metric">
+          <div class="pdf-db-ml">Account Manager</div>
+          <div class="pdf-db-mv" style="font-size:10px;line-height:1.3">${escHtml(amName)}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Build a section with 3 card slots
+  function buildSection(title, subtitle, projects) {
+    if (!projects.length) return '';
+    const cards = projects.map(buildCard).join('');
+    const empties = Array(Math.max(0, 3 - projects.length))
+      .fill('<div class="pdf-db-card pdf-db-card-empty"></div>').join('');
+    return `<div class="pdf-db-section">
+      <div class="pdf-section-header">
+        <span class="pdf-section-title">${title}</span>
+        <span class="pdf-section-divider"></span>
+        <span class="pdf-section-count">${subtitle}</span>
+      </div>
+      <div class="pdf-db-cards">${cards}${empties}</div>
+    </div>`;
+  }
+
+  const totalCount = allFiltered.length;
+  const statusSub = AppState.filterStatus ? ` · ${AppState.filterStatus}` : '';
+  const amSub = amLabel ? ` · ${amLabel}` : '';
+
+  const headerRightHtml = `
+    ${amLabel ? `<div class="pdf-status-badge"><span class="pdf-status-dot"></span>${escHtml(amLabel)}</div>` : ''}
+    <div class="pdf-generated">Generated ${todayStr} &middot; ${totalCount} project${totalCount !== 1 ? 's' : ''}</div>`;
+
+  const sec1Html = buildSection('Highest Value Projects', 'Top 3 by project value', sec1);
+  const sec2Html = buildSection('Most Progress', 'Top 3 by task completion', sec2);
+  const sec3Html = buildSection('New Projects', 'Most recently added', sec3);
+
+  const fullDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Dashboard Summary \u2014 ${escHtml(headerTitle)}</title>
+<style>
+@font-face{font-family:'Archivo';font-weight:400;src:local('Archivo Regular'),local('Archivo-Regular'),local('Archivo')}
+@font-face{font-family:'Archivo';font-weight:500;src:local('Archivo Medium'),local('Archivo-Medium')}
+@font-face{font-family:'Archivo';font-weight:600;src:local('Archivo SemiBold'),local('Archivo-SemiBold')}
+@font-face{font-family:'Archivo';font-weight:700;src:local('Archivo Bold'),local('Archivo-Bold')}
+@font-face{font-family:'Archivo';font-weight:800;src:local('Archivo ExtraBold'),local('Archivo-ExtraBold')}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;padding:40px 20px;min-height:100vh}
+.pdf-page{width:816px;min-height:1056px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:'Archivo',Arial,Helvetica,sans-serif}
+.pdf-header{background:#c20075;padding:20px 36px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.pdf-header-left{flex:1;min-width:0}
+.pdf-header-eyebrow{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:5px}
+.pdf-header-name{font-size:20px;font-weight:800;color:#fff;line-height:1.2;letter-spacing:-.02em}
+.pdf-header-right{flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pdf-status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 12px}
+.pdf-status-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.85;flex-shrink:0}
+.pdf-generated{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px}
+.pdf-section-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #f0f0f0}
+.pdf-section-title{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#c20075}
+.pdf-section-divider{flex:1}
+.pdf-section-count{font-size:9px;font-weight:700;color:#ccc;letter-spacing:.04em}
+.pdf-progress-track{height:4px;background:#f0f0f0;border-radius:99px;overflow:hidden;margin-top:4px}
+.pdf-progress-fill{height:100%;background:#c20075;border-radius:99px}
+.pdf-footer{padding:12px 36px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;background:#fafafa;margin-top:auto}
+.pdf-footer-brand{font-size:10px;font-weight:800;color:#c20075;letter-spacing:.06em;text-transform:uppercase}
+.pdf-footer-meta{font-size:10px;color:#bbb}
+.pdf-footer-page{font-size:10px;color:#bbb}
+.pdf-db-body{flex:1;padding:20px 36px 16px;display:flex;flex-direction:column;gap:18px}
+.pdf-db-section{}
+.pdf-db-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pdf-db-card{border:1.5px solid #eee;border-radius:8px;overflow:hidden;background:#fff}
+.pdf-db-card-empty{border:1.5px dashed #efefef;border-radius:8px;background:#fafafa;min-height:100px}
+.pdf-db-card-top{padding:10px 12px 8px;border-bottom:1px solid #f5f5f5}
+.pdf-db-card-name{font-size:11px;font-weight:800;color:#111;line-height:1.3;margin-bottom:2px;letter-spacing:-.01em}
+.pdf-db-card-client{font-size:9px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.pdf-db-card-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.pdf-db-status-chip{display:inline-flex;align-items:center;gap:4px;background:#f5f5f5;border-radius:999px;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#555}
+.pdf-db-status-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.pdf-db-bigbet{display:inline-flex;align-items:center;background:#fde68a;color:#92400e;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:2px 7px}
+.pdf-db-metrics{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0}
+.pdf-db-metric{padding:7px 10px;border-right:1px solid #f5f5f5}
+.pdf-db-metric:last-child{border-right:none}
+.pdf-db-ml{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bbb;margin-bottom:3px}
+.pdf-db-mv{font-size:12px;font-weight:800;color:#111;letter-spacing:-.01em;line-height:1}
+.pdf-db-mv.accent{color:#c20075}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  @page{margin:0;size:letter}
+  body{background:#fff!important;padding:0!important;display:block}
+  .pdf-page{width:100%;box-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<div class="pdf-page">
+  <div class="pdf-header">
+    <div class="pdf-header-left">
+      <div class="pdf-header-eyebrow">Dashboard Summary</div>
+      <div class="pdf-header-name">${escHtml(headerTitle)}</div>
+    </div>
+    <div class="pdf-header-right">${headerRightHtml}</div>
+  </div>
+  <div class="pdf-db-body">
+    ${sec1Html || ''}
+    ${sec2Html || ''}
+    ${sec3Html || ''}
+    ${!sec1Html && !sec2Html && !sec3Html ? '<div style="color:#aaa;font-size:13px;text-align:center;padding:40px 0">No projects to display</div>' : ''}
+  </div>
+  <div class="pdf-footer">
+    <div class="pdf-footer-brand">Client Project Tracker</div>
+    <div class="pdf-footer-meta">${escHtml(headerTitle)}${escHtml(statusSub)}${escHtml(amSub)}</div>
+    <div class="pdf-footer-page">Generated ${todayStr}</div>
+  </div>
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([fullDoc], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    Toast.error('Pop-up blocked — please allow pop-ups for this page and try again.');
+    URL.revokeObjectURL(url);
+    return;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 function exportProjectPdf(projectId) {
   const project = DB.getProject(projectId);
   if (!project) return;
-  let layout = document.getElementById('pdf-layout');
-  if (!layout) {
-    layout = document.createElement('div');
-    layout.id = 'pdf-layout';
-    document.body.appendChild(layout);
+
+  // Build a complete standalone HTML document — no CSS conflicts with the app
+  const pageHtml = _buildPdfLayout(project);
+  const fullDoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>${escHtml(project.projectName||'Project')} — One-Pager</title>
+<style>
+@font-face{font-family:'Archivo';font-weight:400;src:local('Archivo Regular'),local('Archivo-Regular'),local('Archivo')}
+@font-face{font-family:'Archivo';font-weight:500;src:local('Archivo Medium'),local('Archivo-Medium')}
+@font-face{font-family:'Archivo';font-weight:600;src:local('Archivo SemiBold'),local('Archivo-SemiBold')}
+@font-face{font-family:'Archivo';font-weight:700;src:local('Archivo Bold'),local('Archivo-Bold')}
+@font-face{font-family:'Archivo';font-weight:800;src:local('Archivo ExtraBold'),local('Archivo-ExtraBold')}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;padding:40px 20px;min-height:100vh}
+.pdf-page{width:816px;min-height:1056px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:'Archivo',Arial,Helvetica,sans-serif}
+.pdf-header{background:#c20075;padding:24px 36px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.pdf-header-left{flex:1;min-width:0}
+.pdf-header-client{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:6px}
+.pdf-header-name{font-size:22px;font-weight:800;color:#fff;line-height:1.2;letter-spacing:-.02em}
+.pdf-header-right{flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.pdf-status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 12px}
+.pdf-status-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.85}
+.pdf-big-bet-badge{display:inline-flex;align-items:center;gap:4px;background:#fde68a;color:#92400e;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 10px}
+.pdf-generated{font-size:10px;color:rgba(255,255,255,.55);margin-top:4px}
+.pdf-metrics-strip{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid #f0f0f0}
+.pdf-metric-cell{padding:16px 24px;border-right:1px solid #f0f0f0}
+.pdf-metric-cell:last-child{border-right:none}
+.pdf-metric-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:5px}
+.pdf-metric-value{font-size:18px;font-weight:800;color:#111;letter-spacing:-.02em;line-height:1}
+.pdf-metric-value.accent{color:#c20075}
+.pdf-metric-sub{font-size:10px;color:#aaa;margin-top:3px}
+.pdf-progress-track{height:5px;background:#f0f0f0;border-radius:99px;overflow:hidden;margin-top:6px}
+.pdf-progress-fill{height:100%;background:#c20075;border-radius:99px}
+.pdf-progress-labels{display:flex;justify-content:space-between;font-size:9px;color:#bbb;margin-top:3px}
+.pdf-body{flex:1;padding:28px 36px 24px;display:flex;flex-direction:column;gap:24px}
+.pdf-section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:7px;border-bottom:2px solid #f0f0f0}
+.pdf-section-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#c20075}
+.pdf-section-divider{flex:1}
+.pdf-section-count{font-size:10px;font-weight:700;color:#ccc;letter-spacing:.04em}
+.pdf-task-table{width:100%;border-collapse:collapse;font-size:11px}
+.pdf-task-table thead th{text-align:left;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bbb;padding:0 8px 8px;border-bottom:1px solid #eee}
+.pdf-task-table thead th:first-child{padding-left:0}
+.pdf-task-table tbody td{padding:8px;border-bottom:1px solid #f5f5f5;color:#222;vertical-align:middle}
+.pdf-task-table tbody td:first-child{padding-left:0}
+.pdf-task-table tbody tr:last-child td{border-bottom:none}
+.pdf-task-check{width:14px;height:14px;border-radius:50%;border:1.5px solid #ddd;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pdf-task-check.done{background:#c20075;border-color:#c20075;color:white;font-size:9px}
+.pdf-task-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.pdf-task-chip.not-started{background:#f5f5f5;color:#888}
+.pdf-task-chip.in-progress{background:#ede9fe;color:#6d28d9}
+.pdf-task-chip.blocked{background:#fff1f0;color:#c0392b}
+.pdf-task-chip.done{background:#f0fdf4;color:#15803d}
+.pdf-task-overdue{color:#dc2626;font-size:10px;font-weight:700}
+.pdf-task-due{color:#888;font-size:10px}
+.pdf-notes-list{display:flex;flex-direction:column;gap:10px}
+.pdf-note-item{background:#fafafa;border:1px solid #eee;border-left:3px solid #c20075;border-radius:0 6px 6px 0;padding:10px 14px}
+.pdf-note-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.pdf-note-author{font-size:10px;font-weight:700;color:#111}
+.pdf-note-when{font-size:10px;color:#aaa}
+.pdf-note-body{font-size:11px;color:#444;line-height:1.55}
+.pdf-footer{padding:14px 36px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;background:#fafafa}
+.pdf-footer-brand{font-size:10px;font-weight:800;color:#c20075;letter-spacing:.06em;text-transform:uppercase}
+.pdf-footer-meta{font-size:10px;color:#bbb}
+.pdf-footer-page{font-size:10px;color:#bbb}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  @page{margin:0;size:letter}
+  body{background:#fff!important;padding:0!important;display:block}
+  .pdf-page{width:100%;box-shadow:none!important}
+}
+</style>
+</head>
+<body>
+${pageHtml}
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([fullDoc], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    Toast.error('Pop-up blocked — please allow pop-ups for this page and try again.');
+    URL.revokeObjectURL(url);
+    return;
   }
-  layout.innerHTML = _buildPdfLayout(project);
-  window.print();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 </script>
 <!-- PDF layout container (populated dynamically before print) -->
