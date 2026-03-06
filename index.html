@@ -5237,6 +5237,10 @@ function _bindTimelineSection(projectId) {
  ms.completed = !ms.completed;
  DB.updateProject(projectId, { milestones: proj.milestones });
  _refreshTimelineSection(projectId);
+ // Also refresh the Overview progress bar so it matches the milestone completion
+ const updatedProj = DB.getProject(projectId);
+ const headerPanel = document.getElementById('dv-section-header');
+ if (headerPanel) { headerPanel.innerHTML = _buildHeaderSection(updatedProj); _bindInlineEdits(projectId); }
  return;
  }
 
@@ -5247,6 +5251,8 @@ function _bindTimelineSection(projectId) {
  DB.updateProject(projectId, { milestones });
  _refreshTimelineSection(projectId);
  _updateDetailTabBadge('timeline', milestones.length);
+ const hpDel = document.getElementById('dv-section-header');
+ if (hpDel) { hpDel.innerHTML = _buildHeaderSection(DB.getProject(projectId)); _bindInlineEdits(projectId); }
  Toast.success('Milestone deleted');
  return;
  }
@@ -5287,6 +5293,8 @@ function _doAddMilestone(projectId) {
  DB.updateProject(projectId, { milestones });
  _refreshTimelineSection(projectId);
  _updateDetailTabBadge('timeline', milestones.length);
+ const hpAdd = document.getElementById('dv-section-header');
+ if (hpAdd) { hpAdd.innerHTML = _buildHeaderSection(DB.getProject(projectId)); _bindInlineEdits(projectId); }
  panel.querySelector('#new-ms-name').value = '';
  panel.querySelector('#new-ms-date').value = '';
  Toast.success('Milestone added');
@@ -5322,6 +5330,8 @@ function _activateMsInlineEdit(el, projectId, msId, field) {
  DB.updateProject(projectId, { milestones: msArr });
  }
  _refreshTimelineSection(projectId);
+ const hpEdit = document.getElementById('dv-section-header');
+ if (hpEdit) { hpEdit.innerHTML = _buildHeaderSection(DB.getProject(projectId)); _bindInlineEdits(projectId); }
  }
  function cancel() {
  el.textContent = currentText;
