@@ -4425,16 +4425,23 @@ function _getLastCompletedMilestonePct(project) {
 
 // Primary progress function — milestone-driven.
 // Bar fills to where the last completed dot sits on the timeline.
-// Falls back to completed/total count if dates aren't available.
+// Special rule: if only "Project Kickoff" (the first milestone) is done, return 5%
+// so the bar shows a small "started" indicator without jumping past subsequent dots.
 function getMilestoneProgress(project) {
  const milestones = project.milestones || [];
  if (!milestones.length) return 0;
+ const completed = milestones.filter(m => m.completed);
+ if (!completed.length) return 0;
+ // Special case: only the first milestone (Project Kickoff) is complete
+ // → show 5% starter fill rather than date-position (0%) or count-based overshoot
+ const sortedByDate = [...milestones].sort((a, b) => (a.date||'9999') < (b.date||'9999') ? -1 : 1);
+ const firstMs = sortedByDate[0];
+ if (completed.length === 1 && firstMs && completed[0].id === firstMs.id) return 5;
  // Date-position approach (matches visual dot positions on the bar)
  const posPct = _getLastCompletedMilestonePct(project);
  if (posPct > 0) return Math.round(posPct);
  // Fallback: count-based when start/end dates aren't configured
- const done = milestones.filter(m => m.completed).length;
- return Math.round((done / milestones.length) * 100);
+ return Math.round((completed.length / milestones.length) * 100);
 }
 
 /* ──────────────────────────────────────────────
@@ -5170,22 +5177,46 @@ function _buildTimelineSection(project) {
  }).join('');
  }
 
- // Visual timeline bar
+ // Visual timeline bar — shows all milestones as dots, including undated ones
  function timelineBarHtml() {
  if (sorted.length < 2) return '';
- const dates = sorted.filter(m=>m.date).map(m=>m.date);
- if (dates.length < 2) return '';
- const minD = dates[0], maxD = dates[dates.length-1];
  const toTs = d => new Date(d).getTime();
- const range = toTs(maxD) - toTs(minD) || 1;
  const today = new Date().toISOString().slice(0,10);
+
+ // Date range: use the span of all dated milestones
+ const datesOnly = sorted.filter(m => m.date).map(m => m.date);
+ if (!datesOnly.length) return ''; // no dates at all — can't draw a bar
+ let minD = datesOnly[0];
+ let maxD = datesOnly[datesOnly.length - 1];
+ // If all milestones share one date, extend range slightly so the bar renders
+ if (minD === maxD) {
+  const d = new Date(minD); d.setDate(d.getDate() + 30);
+  maxD = d.toISOString().slice(0,10);
+ }
+ const range = toTs(maxD) - toTs(minD) || 1;
  const todayPct = Math.min(100, Math.max(0, ((toTs(today) - toTs(minD)) / range) * 100));
 
- const markers = sorted.filter(m=>m.date).map(m => {
- const pct = ((toTs(m.date) - toTs(minD)) / range) * 100;
- const state = msState(m);
- const color = state === 'done' ? 'var(--status-live)' : state === 'overdue' ? 'var(--danger)' : 'var(--status-in-progress)';
- return `<div class="tl-marker" style="left:${pct.toFixed(1)}%;background:${color}" title="${escHtml(m.name)}: ${m.date}">
+ // First pass: assign % positions to dated milestones
+ const posList = sorted.map(m => ({
+  m,
+  pct: m.date ? Math.max(0, Math.min(100, ((toTs(m.date) - toTs(minD)) / range) * 100)) : null
+ }));
+
+ // Second pass: interpolate positions for undated milestones between their neighbours
+ posList.forEach((item, i) => {
+  if (item.pct !== null) return;
+  let prevPct = 0, nextPct = 100, prevIdx = -1, nextIdx = posList.length;
+  for (let j = i - 1; j >= 0; j--) { if (posList[j].pct !== null) { prevPct = posList[j].pct; prevIdx = j; break; } }
+  for (let j = i + 1; j < posList.length; j++) { if (posList[j].pct !== null) { nextPct = posList[j].pct; nextIdx = j; break; } }
+  const steps = nextIdx - prevIdx;
+  item.pct = prevPct + (nextPct - prevPct) * ((i - prevIdx) / steps);
+ });
+
+ const markers = posList.map(({ m, pct }) => {
+  const state = msState(m);
+  const color = state === 'done' ? 'var(--status-live)' : state === 'overdue' ? 'var(--danger)' : 'var(--status-in-progress)';
+  const tip = m.date ? `${escHtml(m.name)}: ${m.date}` : `${escHtml(m.name)} (no date)`;
+  return `<div class="tl-marker" style="left:${pct.toFixed(1)}%;background:${color}" title="${tip}">
  <div class="tl-marker-label">${escHtml(m.name)}</div>
  </div>`;
  }).join('');
