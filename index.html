@@ -2331,7 +2331,7 @@ button.big-bet-active {
  transition: background 0.15s;
 }
 .am-badge:hover { background: rgba(59,130,246,0.2); }
-.dv-member-tag.is-am { border-color: rgba(59,130,246,0.35); }
+.dv-member-tag.is-am { border-color: rgba(124,58,237,0.4); background: rgba(124,58,237,0.08); }
 .dv-member-tag-am-btn {
  font-size: 9px;
  color: var(--text-muted);
@@ -2340,8 +2340,8 @@ button.big-bet-active {
  border-radius: 3px;
  transition: color 0.15s;
 }
-.dv-member-tag-am-btn:hover { color: #3b82f6; }
-.dv-member-tag-am-btn.is-am { color: #3b82f6; font-weight: 700; }
+.dv-member-tag-am-btn:hover { color: #7c3aed; }
+.dv-member-tag-am-btn.is-am { color: #7c3aed; font-weight: 700; }
 
 /* ═══════════════════════════════════════════════
  LIST VIEW
@@ -2692,6 +2692,7 @@ button.big-bet-active {
  .fp-panel-inner {
  max-height: 80vh;
  overflow-y: auto;
+ overflow-x: hidden;
  padding: 16px;
  display: flex;
  flex-direction: column;
@@ -2720,7 +2721,7 @@ button.big-bet-active {
  }
  .fp-value-row span { font-size: var(--font-sm); color: var(--text-muted); flex-shrink: 0; }
  .fp-value-input {
- flex: 1; height: 30px; padding: 0 8px;
+ flex: 1; min-width: 0; width: 0; height: 30px; padding: 0 8px;
  background: var(--bg-card); border: 1px solid var(--border-default);
  border-radius: var(--radius-sm); color: var(--text-primary);
  font-size: var(--font-sm); outline: none;
@@ -2730,7 +2731,7 @@ button.big-bet-active {
  display: flex; align-items: center; gap: 6px;
  }
  .fp-date-input {
- flex: 1; height: 30px; padding: 0 8px;
+ flex: 1; min-width: 0; width: 0; height: 30px; padding: 0 8px;
  background: var(--bg-card); border: 1px solid var(--border-default);
  border-radius: var(--radius-sm); color: var(--text-primary);
  font-size: var(--font-sm); outline: none; color-scheme: dark;
@@ -3450,6 +3451,20 @@ const DB = {
   if (p.isBigBet === undefined) p.isBigBet = false;
   if (p.accountManager === undefined) p.accountManager = '';
  if (!p.lastUpdated) p.lastUpdated = nowISO();
+ // Auto-add "Project Kickoff" as first milestone if missing
+ const hasKickoff = p.milestones.some(m => m.name === 'Project Kickoff');
+ if (!hasKickoff) {
+   const kickoffDate = p.startDate || (p.createdAt ? p.createdAt.slice(0,10) : null);
+   const kickoffDone = ['In Progress','Launching','Live','Completed'].includes(p.status);
+   p.milestones.unshift({ id: genId(), name: 'Project Kickoff', date: kickoffDate, completed: kickoffDone });
+ }
+ // Auto-add "Target Launch" as last milestone if missing
+ const hasLaunch = p.milestones.some(m => m.name === 'Target Launch');
+ if (!hasLaunch) {
+   const launchDate = p.targetLaunchDate || null;
+   const launchDone = p.status === 'Completed';
+   p.milestones.push({ id: genId(), name: 'Target Launch', date: launchDate, completed: launchDone });
+ }
  });
  if (!this._data.clients) this._data.clients = [];
  },
@@ -3802,15 +3817,19 @@ function getFilteredProjects() {
 /* ─────────────────────────────────────────────────
  TEAM AVATARS HTML HELPER
 ───────────────────────────────────────────────── */
-function teamAvatarsHtml(members, max = 3) {
+function teamAvatarsHtml(members, max = 3, accountManager = '') {
  if (!members || !members.length) return '';
  const show = members.slice(0, max);
  const extra = members.length - max;
- const colors = ['#6366f1','#8b5cf6','#f59e0b','#10b981','#3b82f6'];
+ const colors = ['#6366f1','#f59e0b','#10b981','#3b82f6','#ec4899'];
+ const AM_COLOR = '#7c3aed'; // purple for account manager
  let html = '<div class="project-card-team">';
  show.forEach((m, i) => {
  const initials = m.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
- html += `<div class="team-avatar" style="background:${colors[i % colors.length]};color:white" title="${m}">${initials}</div>`;
+ const isAm = accountManager && m === accountManager;
+ const bg = isAm ? AM_COLOR : colors[i % colors.length];
+ const ring = isAm ? ' style="background:#7c3aed;color:white;box-shadow:0 0 0 2px #a78bfa"' : ` style="background:${bg};color:white"`;
+ html += `<div class="team-avatar"${ring} title="${m}${isAm ? ' (Account Manager)' : ''}">${initials}</div>`;
  });
  if (extra > 0) {
  html += `<div class="team-avatar team-avatar-more">+${extra}</div>`;
@@ -3893,7 +3912,7 @@ function projectCardHtml(project) {
  </div>
  </div>
 
- ${teamAvatarsHtml(project.teamMembers)}
+ ${teamAvatarsHtml(project.teamMembers, 3, project.accountManager)}
  </div>
  `;
 }
@@ -3935,7 +3954,7 @@ function projectListItemHtml(project) {
    <div class="pli-progress-label">${progress}%${isPaused ? ' (paused)' : ''}</div>
    <div class="pli-progress-bar"><div class="pli-progress-fill" style="width:${progress}%"></div></div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:flex-end">${teamAvatarsHtml(project.teamMembers)}</div>
+  <div style="display:flex;align-items:center;justify-content:flex-end">${teamAvatarsHtml(project.teamMembers, 3, project.accountManager)}</div>
  </div>`;
 }
 
@@ -4386,16 +4405,20 @@ function _bindDetailViewEvents(projectId) {
 ────────────────────────────────────────────── */
 // Returns the bar % position of the most recently completed milestone (or 0)
 function _getLastCompletedMilestonePct(project) {
- const milestones = (project.milestones || []).filter(m => m.completed && m.date);
- if (!milestones.length) return 0;
- const startDateStr = project.startDate || (project.createdAt ? project.createdAt.slice(0,10) : null);
- const endDateStr   = project.targetLaunchDate || null;
- const startTs = startDateStr ? new Date(startDateStr + 'T00:00:00').getTime() : null;
- const endTs   = endDateStr   ? new Date(endDateStr + 'T00:00:00').getTime() : null;
- if (!startTs || !endTs || endTs <= startTs) return 0;
- const sorted = [...milestones].sort((a,b) => a.date > b.date ? -1 : 1); // newest first
- const lastM = sorted[0];
- const mTs = new Date(lastM.date + 'T00:00:00').getTime();
+ // Use the full milestone date range (Kickoff→Launch) as 0%→100%
+ const allMs = (project.milestones || []).filter(m => m.date);
+ if (!allMs.length) return 0;
+ const sortedAll = [...allMs].sort((a,b) => a.date < b.date ? -1 : 1);
+ const toTs = d => new Date(d + 'T00:00:00').getTime();
+ const startTs = toTs(sortedAll[0].date);
+ const endTs   = toTs(sortedAll[sortedAll.length - 1].date);
+ if (endTs <= startTs) return 0;
+ const completed = allMs.filter(m => m.completed);
+ if (!completed.length) return 0;
+ // Last completed by date (newest)
+ const sortedDone = [...completed].sort((a,b) => a.date > b.date ? -1 : 1);
+ const lastM = sortedDone[0];
+ const mTs = toTs(lastM.date);
  const pct = ((mTs - startTs) / (endTs - startTs)) * 100;
  return Math.max(0, Math.min(100, pct));
 }
@@ -4416,57 +4439,55 @@ function getMilestoneProgress(project) {
 
 /* ──────────────────────────────────────────────
  MILESTONE DOTS — positions milestones along the progress bar
- Always renders start (0%) and end (100%) anchor dots.
- Intermediate milestone dots are proportionally placed by date.
+ Uses the full sorted milestone date range as 0%→100%.
+ "Project Kickoff" is the first dot (0%), "Target Launch" is the last (100%).
+ Adds a "Today" line to show current date position.
 ────────────────────────────────────────────── */
 function _buildMilestoneDots(project) {
- // Resolve anchor timestamps — prefer explicit startDate, fall back to createdAt
- const startDateStr = project.startDate || (project.createdAt ? project.createdAt.slice(0,10) : null);
- const endDateStr   = project.targetLaunchDate || null;
- const startTs = startDateStr ? new Date(startDateStr + (startDateStr.length === 10 ? 'T00:00:00' : '')).getTime() : null;
- const endTs   = endDateStr   ? new Date(endDateStr + 'T00:00:00').getTime() : null;
- const hasRange = startTs && endTs && endTs > startTs;
-
  const milestones = (project.milestones || []).filter(m => m.date || m.name);
+ if (!milestones.length) return '';
 
- // Nothing to show if no dates and no milestones
- if (!startTs && !endTs && !milestones.length) return '';
+ const withDates = milestones.filter(m => m.date);
+ if (!withDates.length) return '';
+
+ const toTs = d => new Date(d + 'T00:00:00').getTime();
+ const sorted = [...milestones].sort((a, b) => (a.date||'9999') < (b.date||'9999') ? -1 : 1);
+ const datesOnly = sorted.filter(m => m.date).map(m => m.date);
+ const minD = datesOnly[0];
+ const maxD = datesOnly[datesOnly.length - 1];
+ const startTs = toTs(minD);
+ const endTs   = toTs(maxD);
+ const hasRange = endTs > startTs;
 
  const dots = [];
 
- // ── Start anchor dot ──
- if (startTs) {
-  const startLabel = startDateStr ? formatDateShort(startDateStr) : '';
-  dots.push(`<div class="milestone-dot milestone-dot-anchor is-done" style="left:0%" data-tip="${escHtml('Start' + (startLabel ? ': ' + startLabel : ''))}"></div>`);
- }
-
- // ── Intermediate milestone dots ──
- const sorted = [...milestones].sort((a, b) => (a.date||'') < (b.date||'') ? -1 : 1);
- sorted.forEach((m, i) => {
+ sorted.forEach(m => {
   let pct;
   if (hasRange && m.date) {
-   const mTs = new Date(m.date + 'T00:00:00').getTime();
-   pct = ((mTs - startTs) / (endTs - startTs)) * 100;
-   // Keep away from the anchor dots (4–96%)
-   pct = Math.max(4, Math.min(96, pct));
+   pct = ((toTs(m.date) - startTs) / (endTs - startTs)) * 100;
+   pct = Math.max(0, Math.min(100, pct));
   } else {
-   // Even spacing between the anchors when no date context
-   pct = ((i + 1) / (sorted.length + 1)) * 100;
-   pct = Math.max(4, Math.min(96, pct));
+   pct = 50;
   }
+  const isKickoff = m.name === 'Project Kickoff';
+  const isLaunch  = m.name === 'Target Launch';
   const dateStr = m.date ? ` · ${formatDateShort(m.date)}` : '';
   const doneStr = m.completed ? ' · ✓ Done' : '';
   const tip = `${m.name || 'Milestone'}${dateStr}${doneStr}`;
-  dots.push(`<div class="milestone-dot${m.completed ? ' is-done' : ''}" style="left:${pct.toFixed(1)}%" data-tip="${escHtml(tip)}"></div>`);
+  const anchorClass = (isKickoff || isLaunch) ? ' milestone-dot-anchor' : '';
+  const endClass    = isLaunch ? ' milestone-dot-anchor-end' : '';
+  dots.push(`<div class="milestone-dot${m.completed ? ' is-done' : ''}${anchorClass}${endClass}" style="left:${pct.toFixed(1)}%" data-tip="${escHtml(tip)}"></div>`);
  });
 
- // ── End anchor dot ──
- if (endTs) {
-  const endLabel = endDateStr ? formatDateShort(endDateStr) : '';
-  dots.push(`<div class="milestone-dot milestone-dot-anchor milestone-dot-anchor-end" style="left:100%" data-tip="${escHtml('Target Launch' + (endLabel ? ': ' + endLabel : ''))}"></div>`);
+ // ── Today line ──
+ let todayHtml = '';
+ if (hasRange) {
+  const today = new Date().toISOString().slice(0,10);
+  const todayPct = Math.min(100, Math.max(0, ((toTs(today) - startTs) / (endTs - startTs)) * 100));
+  todayHtml = `<div class="tl-today-line" style="left:${todayPct.toFixed(1)}%" title="Today"><div class="tl-today-label">Today</div></div>`;
  }
 
- return `<div class="milestone-dot-track">${dots.join('')}</div>`;
+ return `<div class="milestone-dot-track">${todayHtml}${dots.join('')}</div>`;
 }
 
 /* ──────────────────────────────────────────────
@@ -4527,7 +4548,14 @@ function _buildHeaderSection(project) {
  <div class="progress-bar-fill progress-fill-${sk}" id="dv-progress-fill" style="width:${barWidth}%"></div>
  ${_buildMilestoneDots(project)}
  </div>
- ${(project.startDate || project.createdAt || project.targetLaunchDate || (project.milestones||[]).length) ? `<div style="font-size:10px;color:var(--text-muted);margin-top:5px">● = start / milestone / target · filled = complete · hover for details</div>` : ''}
+ ${(() => {
+   const msWithDates = (project.milestones||[]).filter(m=>m.date).sort((a,b)=>a.date<b.date?-1:1);
+   if (msWithDates.length >= 2) {
+     return `<div class="tl-bar-ends" style="margin-top:5px"><span style="color:var(--text-muted);font-size:11px">${formatDateShort(msWithDates[0].date)}</span><span style="color:var(--text-muted);font-size:11px">${formatDateShort(msWithDates[msWithDates.length-1].date)}</span></div>`;
+   }
+   return '';
+ })()}
+ ${(project.milestones||[]).length ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px">● = milestone · filled = complete · hover for details</div>` : ''}
  ${isPaused ? `<div style="font-size:var(--font-xs);color:var(--status-paused);margin-top:6px">Progress is paused. Complete milestones to advance the bar.</div>` : ''}
  </div>
  </div>
@@ -5162,7 +5190,7 @@ function _buildTimelineSection(project) {
  </div>`;
  }).join('');
 
- const progPct = doneCount / milestones.length * 100;
+ const progPct = getMilestoneProgress(project);
 
  return `<div class="tl-bar-wrap">
  <div class="tl-bar-track">
@@ -6868,7 +6896,10 @@ function openAddProjectModal(prefillClientId = '') {
  pausedProgress: null,
  teamMembers,
  tasks: [],
- milestones: [],
+ milestones: [
+   { id: genId(), name: 'Project Kickoff', date: startDate || null, completed: false },
+   ...(launchDate ? [{ id: genId(), name: 'Target Launch', date: launchDate, completed: false }] : [])
+ ],
  notes: [{
  id: genId(),
  timestamp: nowISO(),
@@ -7469,12 +7500,14 @@ function exportDashboardPdf() {
   const sec3 = [...remaining2].sort((a, b) => ((b.createdAt || '') > (a.createdAt || '') ? 1 : -1)).slice(0, 3);
 
   const totalCount = allFiltered.length;
+  const totalPipeline = allFiltered.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+  const pipelineStr = totalPipeline > 0 ? '$' + totalPipeline.toLocaleString() : '—';
   const statusSub = AppState.filterStatus ? ` · ${AppState.filterStatus}` : '';
   const amSub = amLabel ? ` · ${amLabel}` : '';
 
   const headerRightHtml = `
     ${amLabel ? `<div class="pdf-status-badge"><span class="pdf-status-dot"></span>${escHtml(amLabel)}</div>` : ''}
-    <div class="pdf-generated">Generated ${todayStr} &middot; ${totalCount} project${totalCount !== 1 ? 's' : ''}</div>`;
+    <div class="pdf-generated">Generated ${todayStr}</div>`;
 
   const sec1Html = buildSection('Highest Value Projects', 'Top 3 by project value', sec1);
   const sec2Html = buildSection('Most Progress', 'Top 3 by task completion', sec2);
@@ -7501,6 +7534,14 @@ body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display
 .pdf-status-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:4px 12px}
 .pdf-status-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.85;flex-shrink:0}
 .pdf-generated{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px}
+/* Metrics strip */
+.pdf-metrics-strip{display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid #f0f0f0}
+.pdf-metric-cell{padding:14px 28px;border-right:1px solid #f0f0f0}
+.pdf-metric-cell:last-child{border-right:none}
+.pdf-metric-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:4px}
+.pdf-metric-value{font-size:20px;font-weight:800;color:#111;letter-spacing:-.02em;line-height:1}
+.pdf-metric-value.accent{color:#c20075}
+.pdf-metric-sub{font-size:10px;color:#aaa;margin-top:3px}
 /* Section headers */
 .pdf-db-body{flex:1;padding:18px 28px 14px;display:flex;flex-direction:column;gap:16px}
 .pdf-db-section{}
@@ -7557,6 +7598,18 @@ body{background:#e8e8e8;font-family:'Archivo',Arial,Helvetica,sans-serif;display
       <div class="pdf-header-name">${escHtml(headerTitle)}</div>
     </div>
     <div class="pdf-header-right">${headerRightHtml}</div>
+  </div>
+  <div class="pdf-metrics-strip">
+    <div class="pdf-metric-cell">
+      <div class="pdf-metric-label">Total Pipeline Value</div>
+      <div class="pdf-metric-value accent">${escHtml(pipelineStr)}</div>
+      <div class="pdf-metric-sub">${totalCount} project${totalCount !== 1 ? 's' : ''} in view${AppState.filterStatus || AppState.filterClients.length || amLabel ? ' · filtered' : ''}</div>
+    </div>
+    <div class="pdf-metric-cell">
+      <div class="pdf-metric-label">Total Projects</div>
+      <div class="pdf-metric-value">${totalCount}</div>
+      <div class="pdf-metric-sub">${AppState.filterStatus ? escHtml(AppState.filterStatus) : 'all statuses'}${amLabel ? ' · ' + escHtml(amLabel) : ''}</div>
+    </div>
   </div>
   <div class="pdf-db-body">
     ${sec1Html || ''}
